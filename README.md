@@ -1,2 +1,2 @@
 # fraudion
-Simple Fraud Detection &amp; Notification System for Asterisk/FreeSwitch.
+Fraud Detection, Notification & Reaction System for Asterisk/FreeSwitch in Go.
