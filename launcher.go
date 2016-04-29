@@ -7,12 +7,11 @@ import (
 	"strings"
 	"time"
 
-	//"database/sql"
-
 	"github.com/andmar/fraudion/config"
 	"github.com/andmar/fraudion/fraudion"
 	"github.com/andmar/fraudion/logger"
-	//"github.com/andmar/fraudion/monitors"
+
+	"github.com/andmar/marlog"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -35,23 +34,52 @@ func main() {
 
 	fraudion := fraudion.Global // NOTE: fraudion.Global (and it's pointers) is (are) initialized on fraudion's package init() function
 
+	// Logger Setup
+	log := marlog.MarLog
+	log.Prefix = "FRAUDION"
+	log.Flags = marlog.FlagLdate | marlog.FlagLtime | marlog.FlagLlongfile
+
+	// TODO: Error handling here
+	err := log.SetStamp("ERROR", "*STDOUT")
+	err = log.SetStamp("DEBUG", "*STDOUT")
+	err = log.SetStamp("INFO", "*STDOUT")
+
 	fraudion.StartUpTime = time.Now()
-	logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf(fmt.Sprintf("Starting Fraudion at %s", fraudion.StartUpTime)), false)
-	logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Parsing CLI flags..."), false)
+	log.LogS("INFO", fmt.Sprintf("Starting Fraudion at %s", fraudion.StartUpTime))
+	log.LogS("INFO", "Parsing CLI flags...")
+	//logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf(fmt.Sprintf("Starting Fraudion at %s", fraudion.StartUpTime)), false)
+	//logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Parsing CLI flags..."), false)
 	flag.Parse()
 
+	// TODO: This should default to constDefaultLogFile, maybe even handle a flag to disable logging
 	if strings.ToLower(*argCliLogFile) != "" {
 
-		var logFile *os.File
 		logFile, err := os.OpenFile(*argCliLogFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
-			logger.Log.Write(logger.ConstLoggerLevelError, fmt.Sprintf("Can't start, there was a problem (%s) opening the Log file. :(", err), true)
-			//os.Exit(1)
-		}
 
-		logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Outputting Log to \"%s\"", *argCliLogFile), false)
-		logger.Log.SetHandles(logFile, logFile, logFile, logFile) // NOTE: Overwrite the default handles on the Logger object.
-		logger.Log.Write(logger.ConstLoggerLevelInfo, "\n", false)
+			log.LogS("ERROR", fmt.Sprintf("Can't start, there was a problem (%s) opening the Log file. :(", err))
+			//logger.Log.Write(logger.ConstLoggerLevelError, fmt.Sprintf("Can't start, there was a problem (%s) opening the Log file. :(", err), true)
+
+			//os.Exit(1) // TODO: Add a configuration item to tell the system to quit when logging is not possible
+
+		} else {
+
+			// TODO: Error handling here
+			err = log.SetOutputHandle("MAINFILE", logFile)
+
+			err = log.AddOuputHandles("INFO", "MAINFILE")
+			err = log.AddOuputHandles("DEBUG", "MAINFILE")
+			err = log.AddOuputHandles("ERROR", "MAINFILE")
+
+			log.LogS("INFO", fmt.Sprintf("Started logging to \"%s\"", *argCliLogFile))
+			//logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Outputting Log to \"%s\"", *argCliLogFile), false)
+
+			logger.Log.SetHandles(logFile, logFile, logFile, logFile) // NOTE: Overwrite the default handles on the Logger object.
+
+			//log.LogS("INFO", "\n")
+			//logger.Log.Write(logger.ConstLoggerLevelInfo, "\n", false)
+
+		}
 
 	}
 
@@ -127,6 +155,8 @@ func main() {
 	if configs.Triggers.SmallDurationCalls.Enabled == true {
 		go triggers.SmallDurationCallsRun(configs, db)
 	}*/
+
+	log.LogS("INFO", "Main thread is going to sleep...")
 
 	// Sleep!
 	for {
