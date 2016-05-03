@@ -18,10 +18,13 @@ var (
 	constSupportedCDRSources2 = []string{"*db_mysql"}
 )
 
-// Load ...
-func Load(configsJSON *FraudionConfigJSON) (*FraudionConfig, error) {
+// Loaded ...
+var Loaded *Config
 
-	configs := new(FraudionConfig)
+// Load ...
+func Load(configsJSON *Parsed) (*Config, error) {
+
+	configs := new(Config)
 
 	fmt.Println(configs)
 
@@ -204,8 +207,8 @@ func Load(configsJSON *FraudionConfigJSON) (*FraudionConfig, error) {
 
 }
 
-// FraudionConfig ...
-type FraudionConfig struct {
+// Config ...
+type Config struct {
 	General      General
 	CDRsSources  interface{}
 	Triggers     Triggers

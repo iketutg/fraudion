@@ -1,5 +1,6 @@
 package monitors
 
+/*
 import (
 	"fmt"
 	"time"
@@ -24,4 +25,4 @@ func ExpectedDestinationsRun(configs *config.FraudionConfig, db *sql.DB) {
 
 	}
 
-}
+}*/

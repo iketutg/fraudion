@@ -1,5 +1,6 @@
 package monitors
 
+/*
 import (
 	"fmt"
 	"time"
@@ -30,4 +31,4 @@ func SmallDurationCallsRun(db *sql.DB) {
 
 	}
 
-}
+}*/

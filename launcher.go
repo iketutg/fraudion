@@ -4,12 +4,14 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
 	"github.com/andmar/fraudion/config"
 	"github.com/andmar/fraudion/fraudion"
 	"github.com/andmar/fraudion/logger"
+	"github.com/andmar/fraudion/softswitch"
 
 	"github.com/andmar/marlog"
 
@@ -19,14 +21,14 @@ import (
 // Defines Constants
 const (
 	constDefaultConfigDir = "/etc/fraudion"
-	constDefaultLogFile   = "/var/log/fraudion.log" // TODO: The system now defaults to STDOUT so this will be removed soon
+	constDefaultLogFile   = "/var/log/fraudion.log" // TODO: Should we keep the system defaulting to STDOUT or use this value?
 )
 
 // Defines expected CLI flags
 var (
-	argCliLogFile   = flag.String("logto", "", "<help message for 'logto'>") // NOTE: The default is "" because we use this to detect if the user has specifiec any file, if not, the system defaults to using STDOUT automatically.
-	argCliConfigDir = flag.String("configin", constDefaultConfigDir, "<help message for 'configin'>")
-	argCliDBPass    = flag.String("dbpass", "", "<help message for 'dbpass'>")
+	argCLILogTo     = flag.String("logto", "", "<help message for 'logto'>") // NOTE: The default is "" because we use this to detect if the user has specified any file, if not, the system defaults to using STDOUT automatically.
+	argCLIConfigDir = flag.String("configin", constDefaultConfigDir, "<help message for 'configin'>")
+	argCLIDBPass    = flag.String("dbpass", "", "<help message for 'dbpass'>")
 )
 
 // Starts here!
@@ -34,15 +36,18 @@ func main() {
 
 	fraudion := fraudion.Global // NOTE: fraudion.Global (and it's pointers) is (are) initialized on fraudion's package init() function
 
+	argCLILogToS := "Buh"
+	argCLILogTo := &argCLILogToS
+
 	// Logger Setup
 	log := marlog.MarLog
 	log.Prefix = "FRAUDION"
 	log.Flags = marlog.FlagLdate | marlog.FlagLtime | marlog.FlagLlongfile
 
-	// TODO: Error handling here
-	err := log.SetStamp("ERROR", "*STDOUT")
-	err = log.SetStamp("DEBUG", "*STDOUT")
-	err = log.SetStamp("INFO", "*STDOUT")
+	// TODO: Error handling here?
+	log.SetStamp("ERROR", "*STDOUT")
+	log.SetStamp("DEBUG", "*STDOUT")
+	log.SetStamp("INFO", "*STDOUT")
 
 	fraudion.StartUpTime = time.Now()
 	log.LogS("INFO", fmt.Sprintf("Starting Fraudion at %s", fraudion.StartUpTime))
@@ -52,9 +57,9 @@ func main() {
 	flag.Parse()
 
 	// TODO: This should default to constDefaultLogFile, maybe even handle a flag to disable logging
-	if strings.ToLower(*argCliLogFile) != "" {
+	if strings.ToLower(*argCLILogTo) != "" {
 
-		logFile, err := os.OpenFile(*argCliLogFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		logFile, err := os.OpenFile(*argCLILogTo, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
 
 			log.LogS("ERROR", fmt.Sprintf("Can't start, there was a problem (%s) opening the Log file. :(", err))
@@ -65,14 +70,14 @@ func main() {
 		} else {
 
 			// TODO: Error handling here
-			err = log.SetOutputHandle("MAINFILE", logFile)
+			log.SetOutputHandle("MAINFILE", logFile)
 
-			err = log.AddOuputHandles("INFO", "MAINFILE")
-			err = log.AddOuputHandles("DEBUG", "MAINFILE")
-			err = log.AddOuputHandles("ERROR", "MAINFILE")
+			log.AddOuputHandles("INFO", "MAINFILE")
+			log.AddOuputHandles("DEBUG", "MAINFILE")
+			log.AddOuputHandles("ERROR", "MAINFILE")
 
-			log.LogS("INFO", fmt.Sprintf("Started logging to \"%s\"", *argCliLogFile))
-			//logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Outputting Log to \"%s\"", *argCliLogFile), false)
+			log.LogS("INFO", fmt.Sprintf("Started logging to \"%s\"", *argCLILogTo))
+			//logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Outputting Log to \"%s\"", *argCLILogTo), false)
 
 			logger.Log.SetHandles(logFile, logFile, logFile, logFile) // NOTE: Overwrite the default handles on the Logger object.
 
@@ -83,9 +88,10 @@ func main() {
 
 	}
 
+	// TODO: The parsing/validation/loading will be moved to a special Init function at package level, as the Softswitch package does
 	logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Starting Fraudion Log at %s", fraudion.StartUpTime), false)
 
-	configsJSON, err := config.Parse(*argCliConfigDir)
+	configsJSON, err := config.Parse(*argCLIConfigDir)
 	if err != nil {
 		logger.Log.Write(logger.ConstLoggerLevelError, fmt.Sprintf("There was an error (%s) parsing the Fraudion JSON configuration file", err), true)
 	}
@@ -119,6 +125,11 @@ func main() {
 		fraudion.State.Triggers.StateDangerousDestinations.ActionChainRunCount = configs.General.DefaultActionChainRunCount
 	}
 
+	softswitch.Init()
+
+	fmt.Println(softswitch.Monitored, reflect.TypeOf(softswitch.Monitored))
+	fmt.Println(softswitch.Monitored.GetCDRsSource(), reflect.TypeOf(softswitch.Monitored.GetCDRsSource()))
+
 	// TODO: We'll call config.Validate() here in the future
 
 	//fmt.Println(fraudion.State)
@@ -128,10 +139,10 @@ func main() {
 	if configs.Triggers.DangerousDestinations.Enabled == true || configs.Triggers.ExpectedDestinations.Enabled == true || configs.Triggers.SmallDurationCalls.Enabled == true {
 		fraudion.LogInfo.Println("Connecting to the CDRs Database...")
 		var dbstring string
-		if *argCliDBPass == "" {
+		if *argCLIDBPass == "" {
 			dbstring = fmt.Sprintf("root:@tcp(localhost:3306)/asteriskcdrdb?allowOldPasswords=1")
 		} else {
-			dbstring = fmt.Sprintf("root:%s@tcp(localhost:3306)/asteriskcdrdb?allowOldPasswords=1", *argCliDBPass)
+			dbstring = fmt.Sprintf("root:%s@tcp(localhost:3306)/asteriskcdrdb?allowOldPasswords=1", *argCLIDBPass)
 		}
 		db, err = sql.Open("mysql", dbstring)
 		if err != nil {

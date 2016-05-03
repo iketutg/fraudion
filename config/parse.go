@@ -14,13 +14,16 @@ import (
 )
 
 const (
-	constDefaultJSONConfigFilename = "fraudion.json"
+	constDefaultJSONConfigFilename = "fraudion.json" // NOTE: Defaults to search "fraudion.json" on the run" directory
 )
 
-// Parse ...
-func Parse(configDir string) (*FraudionConfigJSON, error) {
+// parsedConfig ...
+var parsedConfig *Parsed
 
-	configsJSON := new(FraudionConfigJSON)
+// Parse ...
+func Parse(configDir string) (*Parsed, error) {
+
+	configsJSON := new(Parsed)
 
 	configFileName := constDefaultJSONConfigFilename
 
@@ -151,8 +154,8 @@ func Parse(configDir string) (*FraudionConfigJSON, error) {
 
 }
 
-// FraudionConfigJSON ...
-type FraudionConfigJSON struct {
+// Parsed ...
+type Parsed struct {
 	General      GeneralJSON
 	CDRsSources  map[string]map[string]string `json:"cdrs_sources"`
 	Triggers     TriggersJSON

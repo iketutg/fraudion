@@ -1,6 +1,6 @@
 package config
 
 // Validate ...
-func Validate() (*FraudionConfig, error) {
+func Validate() (*Config, error) {
 	return nil, nil
 }

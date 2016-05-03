@@ -12,3 +12,9 @@
  * MySQL Database actions with https://github.com/Go-SQL-Driver/MySQL/ over https://golang.org/pkg/database/sql/ (more information at http://go-database-sql.org/)
  * Please see Unmarshaling better, it can simplify configuration import to structs
  * For system commands https://golang.org/pkg/os/exec/
+ * http://www.golangpatterns.info/home
+ * https://github.com/golang/go/wiki
+ * awesome-go.com
+ * https://www.nada.kth.se/~snilsson/go_for_java_programmers/
+ * https://blog.golang.org/organizing-go-code
+ * http://jordanorelli.com/post/32665860244/how-to-use-interfaces-in-go

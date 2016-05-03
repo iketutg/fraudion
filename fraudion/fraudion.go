@@ -17,7 +17,7 @@ var Global *Fraudion
 // Fraudion The "Type"
 type Fraudion struct {
 	StartUpTime time.Time
-	Configs     *config.FraudionConfig
+	Configs     *config.Config
 	State       *State
 }
 
