@@ -98,8 +98,16 @@ func main() {
 	//logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Starting Fraudion Log at %s", fraudion.StartUpTime), false)
 
 	if err := config.Parse(*argCLIConfigIn, *argCLIConfigFilename); err != nil {
-		//logger.Log.Write(logger.ConstLoggerLevelError, fmt.Sprintf("There was an error (%s) parsing the Fraudion JSON configuration file", err), true)
+		log.LogO("ERROR:", err.Error(), marlog.OptionFatal)
 	}
+
+	fmt.Println(config.Parsed.General)
+	fmt.Println(config.Parsed.Softswitch)
+	fmt.Println(config.Parsed.CDRsSources)
+	fmt.Println(config.Parsed.Monitors)
+	fmt.Println(config.Parsed.Actions)
+	fmt.Println(config.Parsed.ActionChains)
+	fmt.Println(config.Parsed.DataGroups)
 
 	/*
 		configs, err := config.Load(configsJSON)

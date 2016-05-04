@@ -22,7 +22,7 @@ var (
 var Loaded *Config
 
 // Load ...
-func Load(configsJSON *Parsed) (*Config, error) {
+func Load() error {
 
 	configs := new(Config)
 
