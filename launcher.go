@@ -4,40 +4,45 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"reflect"
+	//"reflect"
 	"strings"
 	"time"
+
+	"path/filepath"
 
 	"github.com/andmar/fraudion/config"
 	"github.com/andmar/fraudion/fraudion"
 	"github.com/andmar/fraudion/logger"
-	"github.com/andmar/fraudion/softswitch"
+	//"github.com/andmar/fraudion/softswitch"
 
 	"github.com/andmar/marlog"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
-// Defines Constants
 const (
-	constDefaultConfigDir = "/etc/fraudion"
-	constDefaultLogFile   = "/var/log/fraudion.log" // TODO: Should we keep the system defaulting to STDOUT or use this value?
+	// NOTE: The system defaults to search the config file "fraudion.json" on the "run" directory
+	constDefaultConfigDir      = "."
+	constDefaultConfigFilename = "fraudion.json"
+	constDefaultLogDir         = "."
+	constDefaultLogFile        = "fraudion.log" // TODO: Should we keep the system defaulting to STDOUT or use this value?
+
 )
 
-// Defines expected CLI flags
 var (
-	argCLILogTo     = flag.String("logto", "", "<help message for 'logto'>") // NOTE: The default is "" because we use this to detect if the user has specified any file, if not, the system defaults to using STDOUT automatically.
-	argCLIConfigDir = flag.String("configin", constDefaultConfigDir, "<help message for 'configin'>")
-	argCLIDBPass    = flag.String("dbpass", "", "<help message for 'dbpass'>")
+	argCLILogTo          = flag.String("logto", constDefaultLogDir, "<help message for 'logto'>")
+	argCLILogFilename    = flag.String("logfile", constDefaultLogFile, "<help message for 'logfile'>")
+	argCLIConfigIn       = flag.String("cfgin", constDefaultConfigDir, "<help message for 'cfgin'>")
+	argCLIConfigFilename = flag.String("cfgfile", constDefaultConfigFilename, "<help message for 'cfgfile'>")
+
+	// TODO: This is temporary only, this information will always come from the config file
+	argCLIDBPass = flag.String("dbpass", "", "<help message for 'dbpass'>")
 )
 
-// Starts here!
 func main() {
 
+	// TODO: This is to be removed
 	fraudion := fraudion.Global // NOTE: fraudion.Global (and it's pointers) is (are) initialized on fraudion's package init() function
-
-	argCLILogToS := "Buh"
-	argCLILogTo := &argCLILogToS
 
 	// Logger Setup
 	log := marlog.MarLog
@@ -54,12 +59,13 @@ func main() {
 	log.LogS("INFO", "Parsing CLI flags...")
 	//logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf(fmt.Sprintf("Starting Fraudion at %s", fraudion.StartUpTime)), false)
 	//logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Parsing CLI flags..."), false)
+
 	flag.Parse()
 
 	// TODO: This should default to constDefaultLogFile, maybe even handle a flag to disable logging
-	if strings.ToLower(*argCLILogTo) != "" {
+	if strings.ToLower(*argCLILogTo) != "" && strings.ToLower(*argCLILogFilename) != "" {
 
-		logFile, err := os.OpenFile(*argCLILogTo, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		logFile, err := os.OpenFile(filepath.Join(*argCLILogTo, *argCLILogFilename), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
 
 			log.LogS("ERROR", fmt.Sprintf("Can't start, there was a problem (%s) opening the Log file. :(", err))
@@ -76,7 +82,7 @@ func main() {
 			log.AddOuputHandles("DEBUG", "MAINFILE")
 			log.AddOuputHandles("ERROR", "MAINFILE")
 
-			log.LogS("INFO", fmt.Sprintf("Started logging to \"%s\"", *argCLILogTo))
+			log.LogS("INFO", fmt.Sprintf("Started logging to \"%s\"", filepath.Join(*argCLILogTo, *argCLILogFilename)))
 			//logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Outputting Log to \"%s\"", *argCLILogTo), false)
 
 			logger.Log.SetHandles(logFile, logFile, logFile, logFile) // NOTE: Overwrite the default handles on the Logger object.
@@ -89,19 +95,19 @@ func main() {
 	}
 
 	// TODO: The parsing/validation/loading will be moved to a special Init function at package level, as the Softswitch package does
-	logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Starting Fraudion Log at %s", fraudion.StartUpTime), false)
+	//logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Starting Fraudion Log at %s", fraudion.StartUpTime), false)
 
-	configsJSON, err := config.Parse(*argCLIConfigDir)
-	if err != nil {
-		logger.Log.Write(logger.ConstLoggerLevelError, fmt.Sprintf("There was an error (%s) parsing the Fraudion JSON configuration file", err), true)
+	if err := config.Parse(*argCLIConfigIn, *argCLIConfigFilename); err != nil {
+		//logger.Log.Write(logger.ConstLoggerLevelError, fmt.Sprintf("There was an error (%s) parsing the Fraudion JSON configuration file", err), true)
 	}
 
-	configs, err := config.Load(configsJSON)
-	if err != nil {
-		logger.Log.Write(logger.ConstLoggerLevelError, fmt.Sprintf("There was an error (%s) validating/loading the Fraudion configuration", err), true)
-	}
+	/*
+		configs, err := config.Load(configsJSON)
+		if err != nil {
+			logger.Log.Write(logger.ConstLoggerLevelError, fmt.Sprintf("There was an error (%s) validating/loading the Fraudion configuration", err), true)
+		}*/
 
-	if configs.Triggers.DangerousDestinations.MaxActionChainRunCount != 0 {
+	/*if configs.Triggers.DangerousDestinations.MaxActionChainRunCount != 0 {
 		fraudion.State.Triggers.StateDangerousDestinations.ActionChainRunCount = configs.Triggers.DangerousDestinations.MaxActionChainRunCount
 	} else {
 		fraudion.State.Triggers.StateDangerousDestinations.ActionChainRunCount = configs.General.DefaultActionChainRunCount
@@ -123,12 +129,12 @@ func main() {
 		fraudion.State.Triggers.StateSmallDurationCalls.ActionChainRunCount = configs.Triggers.SmallDurationCalls.MaxActionChainRunCount
 	} else {
 		fraudion.State.Triggers.StateDangerousDestinations.ActionChainRunCount = configs.General.DefaultActionChainRunCount
-	}
+	}*/
 
-	softswitch.Init()
+	//softswitch.Init()
 
-	fmt.Println(softswitch.Monitored, reflect.TypeOf(softswitch.Monitored))
-	fmt.Println(softswitch.Monitored.GetCDRsSource(), reflect.TypeOf(softswitch.Monitored.GetCDRsSource()))
+	//fmt.Println(softswitch.Monitored, reflect.TypeOf(softswitch.Monitored))
+	//fmt.Println(softswitch.Monitored.GetCDRsSource(), reflect.TypeOf(softswitch.Monitored.GetCDRsSource()))
 
 	// TODO: We'll call config.Validate() here in the future
 

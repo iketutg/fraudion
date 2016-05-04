@@ -1,11 +1,11 @@
 package config
 
 import (
-	"fmt"
+	// "fmt"
 	"time"
-
-	"github.com/andmar/fraudion/logger"
-	"github.com/andmar/fraudion/utils"
+	//
+	// "github.com/andmar/fraudion/logger"
+	// "github.com/andmar/fraudion/utils"
 )
 
 const (
@@ -26,7 +26,7 @@ func Load(configsJSON *Parsed) (*Config, error) {
 
 	configs := new(Config)
 
-	fmt.Println(configs)
+	/*fmt.Println(configs)
 
 	logger.Log.Write(logger.ConstLoggerLevelInfo, "Validating and Loading configurations...", false)
 
@@ -202,7 +202,7 @@ func Load(configsJSON *Parsed) (*Config, error) {
 	configs.DataGroups.List = configsJSON.DataGroups.List
 
 	logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Loaded Configs: %v", configs), false)
-
+	*/
 	return configs, nil
 
 }
@@ -325,11 +325,11 @@ type actionChainAction struct {
 
 // DataGroups ...
 type DataGroups struct {
-	List map[string]DataGroup
+	List map[string]dataGroup
 }
 
-// DataGroup ...
-type DataGroup struct {
+// dataGroup ...
+type dataGroup struct {
 	PhoneNumber      string            `json:"phone_number"`
 	EmailAddress     string            `json:"email_address"`
 	HTTPURL          string            `json:"http_url"`

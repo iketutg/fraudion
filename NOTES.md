@@ -18,3 +18,5 @@
  * https://www.nada.kth.se/~snilsson/go_for_java_programmers/
  * https://blog.golang.org/organizing-go-code
  * http://jordanorelli.com/post/32665860244/how-to-use-interfaces-in-go
+ * https://blog.golang.org/json-and-go
+ * http://stackoverflow.com/questions/23030884/is-there-a-way-to-create-an-instance-of-a-struct-from-a-string

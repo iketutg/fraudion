@@ -3,170 +3,163 @@ package config
 import (
 	"fmt"
 	"os"
+	"reflect"
 
 	"encoding/json"
 	"path/filepath"
 
+	"github.com/andmar/marlog"
+
 	"github.com/DisposaBoy/JsonConfigReader"
-
-	"github.com/andmar/fraudion/logger"
-	"github.com/andmar/fraudion/utils"
 )
 
-const (
-	constDefaultJSONConfigFilename = "fraudion.json" // NOTE: Defaults to search "fraudion.json" on the run" directory
-)
-
-// parsedConfig ...
 var parsedConfig *Parsed
+var typeRegistry = make(map[string]reflect.Type)
+
+func init() {
+	typeRegistry["generalJSON"] = reflect.TypeOf(generalJSON{})
+	typeRegistry["softswitchJSON"] = reflect.TypeOf(softswitchJSON{})
+	typeRegistry["monitorsJSON"] = reflect.TypeOf(monitorsJSON{})
+	typeRegistry["actionsJSON"] = reflect.TypeOf(actionsJSON{})
+}
 
 // Parse ...
-func Parse(configDir string) (*Parsed, error) {
+func Parse(configDir string, configFileName string) error {
 
-	configsJSON := new(Parsed)
+	log := marlog.MarLog
+	configs := new(Parsed)
 
-	configFileName := constDefaultJSONConfigFilename
-
-	logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Parsing JSON from config file \"%s\"...", filepath.Join(configDir, configFileName)), false)
-
-	// ** JSON config file to map[string] to Raw JSON
-	JSONconfigFile, err := os.Open(filepath.Join(configDir, configFileName))
+	// From JSON config file to map[string]"RawJSON"
+	configFile, err := os.Open(filepath.Join(configDir, configFileName))
 	if err != nil {
-		customErrorMessage := fmt.Sprintf("There was an error (%s) opening the JSON config file", err.Error())
-		return nil, utils.DebugLogAndGetError(customErrorMessage, true)
+		os.Exit(-1)
 	}
-	defer JSONconfigFile.Close()
+	defer configFile.Close()
 
-	var RawJSON map[string]*json.RawMessage // NOTE: Better than using the Lib example's Empty interface... https://tour.golang.org/methods/14
-	JSONConfigFileReader := JsonConfigReader.New(JSONconfigFile)
+	// NOTE: JSON Related Help at https://github.com/DisposaBoy/JsonConfigReader, https://golang.org/pkg/encoding/json/, https://blog.golang.org/json-and-go
 
-	err = json.NewDecoder(JSONConfigFileReader).Decode(&RawJSON) // NOTE: Reads the JSON file to JSONConfigReader as a map[string]<Raw JSON that has to be decoded further!>
-	if err != nil {
-		customErrorMessage := fmt.Sprintf("There was an error (%s) doing the initial parsing of the JSON config file", err.Error())
-		return nil, utils.DebugLogAndGetError(customErrorMessage, true)
+	var rawJSON map[string]*json.RawMessage // NOTE: Better than using the Lib example's Empty interface example... https://tour.golang.org/methods/14
+	if err = json.NewDecoder(JsonConfigReader.New(configFile)).Decode(&rawJSON); err != nil {
+
 	}
+
+	unmarshalJSONIntoObject := func(sectionName string, typeName string, getObjectPointer func(object interface{}) interface{}) error {
+		reflectType, hasKey := typeRegistry[typeName]
+		if hasKey == false {
+			return fmt.Errorf("Destination object is nil\n")
+		}
+		sectionRawJSON, hasKey := rawJSON[sectionName]
+		if hasKey == false {
+			return fmt.Errorf("Section not found in JSON\n")
+		}
+		if err := json.Unmarshal(*sectionRawJSON, getObjectPointer(reflect.New(reflectType).Elem().Interface())); err != nil {
+			return fmt.Errorf("Unmarshal error: %s\n", err)
+		}
+		return nil
+	}
+	// NOTE: Usage example:
+	/*
+		if err := unmarshalIntoObject("general", "generalJSON",
+			func(object interface{}) interface{} {
+				configs.General = object.(generalJSON)
+				return &configs.General
+			}); err != nil {
+			log.LogO("ERROR", fmt.Sprintf("%s", err), marlog.OptionFatal)
+		}
+	*/
+	unmarshalJSONIntoField := func(sectionName string, field interface{}) error {
+		sectionRawJSON, hasKey := rawJSON[sectionName]
+		if hasKey == false {
+			return fmt.Errorf("Section not found in JSON\n")
+		}
+		if err := json.Unmarshal(*sectionRawJSON, field); err != nil {
+			return fmt.Errorf("Unmarshal error: %s\n", err)
+		}
+		return nil
+	}
+	// NOTE: Usage example:
+	/*
+		if err := unmarshalJSONIntoField("cdrs_sources", &configs.CDRsSources); err != nil {
+			log.LogO("ERROR", fmt.Sprintf("%s", err), marlog.OptionFatal)
+		}
+	*/
 
 	// ** General Section
-	sectionName := "general"
-	rawGeneralJSON, hasKey := RawJSON[sectionName]
-	if hasKey == false {
-		customErrorMessage := fmt.Sprintf("Could not find \"%s\" section in config JSON", sectionName)
-		return nil, utils.DebugLogAndGetError(customErrorMessage, true)
+	if err := unmarshalJSONIntoObject("general", "generalJSON",
+		func(object interface{}) interface{} {
+			configs.General = object.(generalJSON)
+			return &configs.General
+		}); err != nil {
+		log.LogO("ERROR", fmt.Sprintf("%s", err), marlog.OptionFatal)
 	}
 
-	configGeneralJSON := new(GeneralJSON)
-	if err := json.Unmarshal(*rawGeneralJSON, configGeneralJSON); err != nil {
-		customErrorMessage := fmt.Sprintf("Could not (%s) Unmarshal \"%s\" section in config JSON", err, sectionName)
-		return nil, utils.DebugLogAndGetError(customErrorMessage, true)
+	// ** Softswitch Section
+	if err := unmarshalJSONIntoObject("softswitch", "softswitchJSON",
+		func(object interface{}) interface{} {
+			configs.Softswitch = object.(softswitchJSON)
+			return &configs.Softswitch
+		}); err != nil {
+		log.LogO("ERROR", fmt.Sprintf("%s", err), marlog.OptionFatal)
 	}
 
-	configsJSON.General = *configGeneralJSON
-	//Fraudion.LogInfo.Println("General:", configGeneralJSON)
-
-	// ** CDRsSources Section
-	sectionName = "cdrs_sources"
-	rawCDRsSourcesJSON, hasKey := RawJSON[sectionName]
-	if hasKey == false {
-		customErrorMessage := fmt.Sprintf("Could not find \"%s\" section in config JSON", sectionName)
-		return nil, utils.DebugLogAndGetError(customErrorMessage, true)
+	// ** CDRs Sources Section
+	if err := unmarshalJSONIntoField("cdrs_sources", &configs.CDRsSources); err != nil {
+		log.LogO("ERROR", fmt.Sprintf("%s", err), marlog.OptionFatal)
 	}
 
-	configCDRsSourcesJSON := new(map[string]map[string]string)
-	if err := json.Unmarshal(*rawCDRsSourcesJSON, configCDRsSourcesJSON); err != nil {
-		customErrorMessage := fmt.Sprintf("Could not (%s) Unmarshal \"%s\" section in config JSON", err, sectionName)
-		return nil, utils.DebugLogAndGetError(customErrorMessage, true)
+	// ** Monitors
+	if err := unmarshalJSONIntoObject("monitors", "monitorsJSON",
+		func(object interface{}) interface{} {
+			configs.Monitors = object.(monitorsJSON)
+			return &configs.Monitors
+		}); err != nil {
+		log.LogO("ERROR", fmt.Sprintf("%s", err), marlog.OptionFatal)
 	}
-
-	configsJSON.CDRsSources = *configCDRsSourcesJSON
-	//Fraudion.LogInfo.Println("CDRsSources:", *configCDRsSourcesJSON)
-
-	// ** Triggers Section
-	sectionName = "triggers"
-	rawTriggersJSON, hasKey := RawJSON[sectionName]
-	if hasKey == false {
-		customErrorMessage := fmt.Sprintf("Could not find \"%s\" section in config JSON", sectionName)
-		return nil, utils.DebugLogAndGetError(customErrorMessage, true)
-	}
-
-	configTriggersJSON := new(TriggersJSON)
-	if err := json.Unmarshal(*rawTriggersJSON, configTriggersJSON); err != nil {
-		customErrorMessage := fmt.Sprintf("Could not Unmarshal \"%s\" section in config JSON", sectionName)
-		return nil, utils.DebugLogAndGetError(customErrorMessage, true)
-	}
-
-	configsJSON.Triggers = *configTriggersJSON
-	//Fraudion.LogInfo.Println("Triggers:", configTriggersJSON)
 
 	// ** Actions Section
-	sectionName = "actions"
-	rawActionsJSON, hasKey := RawJSON[sectionName]
-	if hasKey == false {
-		customErrorMessage := fmt.Sprintf("Could not find \"%s\" section in config JSON", sectionName)
-		return nil, utils.DebugLogAndGetError(customErrorMessage, true)
+	if err := unmarshalJSONIntoObject("actions", "actionsJSON",
+		func(object interface{}) interface{} {
+			configs.Actions = object.(actionsJSON)
+			return &configs.Actions
+		}); err != nil {
+		log.LogO("ERROR", fmt.Sprintf("%s", err), marlog.OptionFatal)
 	}
 
-	configActionsJSON := new(ActionsJSON)
-	if err := json.Unmarshal(*rawActionsJSON, configActionsJSON); err != nil {
-		customErrorMessage := fmt.Sprintf("Could not Unmarshal \"%s\" section in config JSON", sectionName)
-		return nil, utils.DebugLogAndGetError(customErrorMessage, true)
+	// ** Action Chains Section
+	if err := unmarshalJSONIntoField("action_chains", &configs.ActionChains); err != nil {
+		log.LogO("ERROR", fmt.Sprintf("%s", err), marlog.OptionFatal)
 	}
-
-	configsJSON.Actions = *configActionsJSON
-	//Fraudion.LogInfo.Println("Actions:", configActionsJSON)
-
-	// ** Actions Chains Section
-	sectionName = "action_chains"
-	rawActionChainsJSON, hasKey := RawJSON[sectionName]
-	if hasKey == false {
-		customErrorMessage := fmt.Sprintf("Could not find \"%s\" section in config JSON", sectionName)
-		return nil, utils.DebugLogAndGetError(customErrorMessage, true)
-	}
-
-	configActionChainsJSON := new(ActionChainsJSON)
-	if err := json.Unmarshal(*rawActionChainsJSON, configActionChainsJSON); err != nil {
-		customErrorMessage := fmt.Sprintf("Could not Unmarshal \"%s\" section in config JSON", sectionName)
-		return nil, utils.DebugLogAndGetError(customErrorMessage, true)
-	}
-
-	configsJSON.ActionChains = *configActionChainsJSON
-	//Fraudion.LogInfo.Println("Action Chains:", configActionChainsJSON)
 
 	// ** Data Groups Section
-	sectionName = "data_groups"
-	rawDataGroupsJSON, hasKey := RawJSON[sectionName]
-	if hasKey == false {
-		customErrorMessage := fmt.Sprintf("Could not find \"%s\" section in config JSON", sectionName)
-		return nil, utils.DebugLogAndGetError(customErrorMessage, true)
+	if err := unmarshalJSONIntoField("data_groups", &configs.DataGroups); err != nil {
+		log.LogO("ERROR", fmt.Sprintf("%s", err), marlog.OptionFatal)
 	}
 
-	configDataGroupsJSON := new(DataGroupsJSON)
-	if err := json.Unmarshal(*rawDataGroupsJSON, configDataGroupsJSON); err != nil {
-		customErrorMessage := fmt.Sprintf("Could not Unmarshal \"%s\" section in config JSON", sectionName)
-		return nil, utils.DebugLogAndGetError(customErrorMessage, true)
-	}
+	fmt.Println("General:", configs.General)
+	fmt.Println("Softswitch:", configs.Softswitch)
+	fmt.Println("CDRs Sources:", configs.CDRsSources)
+	fmt.Println("Monitors:", configs.Monitors)
+	fmt.Println("Actions:", configs.Actions)
+	fmt.Println("Action Chains:", configs.ActionChains)
+	fmt.Println("Data Groups:", configs.DataGroups)
 
-	configsJSON.DataGroups = *configDataGroupsJSON
-	//ypes.Fraudion.LogInfo.Println("Data Groups:", configDataGroupsJSON)
-
-	logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Parsed Configs: %v", configsJSON), false)
-
-	return configsJSON, nil
+	return nil
 
 }
 
 // Parsed ...
 type Parsed struct {
-	General      GeneralJSON
-	CDRsSources  map[string]map[string]string `json:"cdrs_sources"`
-	Triggers     TriggersJSON
-	Actions      ActionsJSON
-	ActionChains ActionChainsJSON
-	DataGroups   DataGroupsJSON
+	General      generalJSON
+	Softswitch   softswitchJSON
+	CDRsSources  map[string]map[string]string
+	Monitors     monitorsJSON
+	Actions      actionsJSON
+	ActionChains map[string][]actionChainAction
+	DataGroups   map[string]dataGroup
 }
 
-// GeneralJSON ...
-type GeneralJSON struct {
-	MonitoredSoftware                     string `json:"monitored_software"`
+// generalJSON ...
+type generalJSON struct {
 	CDRsSource                            string `json:"cdrs_source"`
 	DefaultTriggerExecuteInterval         string `json:"default_trigger_execute_interval"`
 	DefaultHitThreshold                   uint32 `json:"default_hit_threshold"`
@@ -175,15 +168,22 @@ type GeneralJSON struct {
 	DefaultActionChainRunCount            uint32 `json:"default_action_chain_run_count"`
 }
 
-// TriggersJSON ...
-type TriggersJSON struct {
-	SimultaneousCalls     triggerSimultaneousCallsJSON     `json:"simultaneous_calls"`
-	DangerousDestinations triggerDangerousDestinationsJSON `json:"dangerous_destinations"`
-	ExpectedDestinations  triggerExpectedDestinationsJSON  `json:"expected_destinations"`
-	SmallDurationCalls    triggerSmallCallDurationsJSON    `json:"small_duration_calls"`
+// softswitchJSON ...
+type softswitchJSON struct {
+	Brand      string
+	Version    string
+	CDRsSource string `json:"cdrs_source"`
 }
 
-type triggerSimultaneousCallsJSON struct {
+// monitoresJSON ...
+type monitorsJSON struct {
+	SimultaneousCalls     monitorSimultaneousCallsJSON     `json:"*simultaneous_calls"`
+	DangerousDestinations monitorDangerousDestinationsJSON `json:"*dangerous_destinations"`
+	ExpectedDestinations  monitorExpectedDestinationsJSON  `json:"*expected_destinations"`
+	SmallDurationCalls    monitorSmallCallDurationsJSON    `json:"*small_duration_calls"`
+}
+
+type monitorBase struct {
 	Enabled                  bool   `json:"enabled"`
 	ExecuteInterval          string `json:"execute_interval"`
 	HitThreshold             uint32 `json:"hit_threshold"`
@@ -193,52 +193,35 @@ type triggerSimultaneousCallsJSON struct {
 	MaxActionChainRunCount   uint32 `json:"action_chain_run_count"`
 }
 
-type triggerDangerousDestinationsJSON struct {
-	Enabled                  bool     `json:"enabled"`
-	ExecuteInterval          string   `json:"execute_interval"`
-	HitThreshold             uint32   `json:"hit_threshold"`
-	MinimumNumberLength      uint32   `json:"minimum_number_length"`
-	ActionChainName          string   `json:"action_chain_name"`
-	ActionChainHoldoffPeriod uint32   `json:"action_chain_holdoff_period"`
-	MaxActionChainRunCount   uint32   `json:"action_chain_run_count"`
-	ConsiderCDRsFromLast     string   `json:"consider_cdrs_from_last"`
-	PrefixList               []string `json:"prefix_list"`
-	MatchRegex               string   `json:"match_regex"`
-	IgnoreRegex              string   `json:"ignore_regex"`
+type monitorSimultaneousCallsJSON struct {
+	monitorBase
+}
+type monitorDangerousDestinationsJSON struct {
+	monitorBase
+	ConsiderCDRsFromLast string   `json:"consider_cdrs_from_last"`
+	PrefixList           []string `json:"prefix_list"`
+	MatchRegex           string   `json:"match_regex"`
+	IgnoreRegex          string   `json:"ignore_regex"`
+}
+type monitorExpectedDestinationsJSON struct {
+	monitorBase
+	ConsiderCDRsFromLast string   `json:"consider_cdrs_from_last"`
+	PrefixList           []string `json:"prefix_list"`
+	MatchRegex           string   `json:"match_regex"`
+	IgnoreRegex          string   `json:"ignore_regex"`
+}
+type monitorSmallCallDurationsJSON struct {
+	monitorBase
+	ConsiderCDRsFromLast string `json:"consider_cdrs_from_last"`
+	DurationThreshold    string `json:"duration_threshold"`
 }
 
-type triggerExpectedDestinationsJSON struct {
-	Enabled                  bool     `json:"enabled"`
-	ExecuteInterval          string   `json:"execute_interval"`
-	HitThreshold             uint32   `json:"hit_threshold"`
-	MinimumNumberLength      uint32   `json:"minimum_number_length"`
-	ActionChainName          string   `json:"action_chain_name"`
-	ActionChainHoldoffPeriod uint32   `json:"action_chain_holdoff_period"`
-	MaxActionChainRunCount   uint32   `json:"action_chain_run_count"`
-	ConsiderCDRsFromLast     string   `json:"consider_cdrs_from_last"`
-	PrefixList               []string `json:"prefix_list"`
-	MatchRegex               string   `json:"match_regex"`
-	IgnoreRegex              string   `json:"ignore_regex"`
-}
-
-type triggerSmallCallDurationsJSON struct {
-	Enabled                  bool   `json:"enabled"`
-	ExecuteInterval          string `json:"execute_interval"`
-	HitThreshold             uint32 `json:"hit_threshold"`
-	MinimumNumberLength      uint32 `json:"minimum_number_length"`
-	ActionChainName          string `json:"action_chain_name"`
-	ActionChainHoldoffPeriod uint32 `json:"action_chain_holdoff_period"`
-	MaxActionChainRunCount   uint32 `json:"action_chain_run_count"`
-	ConsiderCDRsFromLast     string `json:"consider_cdrs_from_last"`
-	DurationThreshold        string `json:"duration_threshold"`
-}
-
-// ActionsJSON ...
-type ActionsJSON struct {
-	Email         actionEmailJSON         `json:"email"`
-	Call          actionCallJSON          `json:"call"`
-	HTTP          actionHTTPJSON          `json:"http"`
-	LocalCommands actionLocalCommandsJSON `json:"local_commands"`
+// actionsJSON ...
+type actionsJSON struct {
+	Email         actionEmailJSON         `json:"*email"`
+	Call          actionCallJSON          `json:"*call"`
+	HTTP          actionHTTPJSON          `json:"*http"`
+	LocalCommands actionLocalCommandsJSON `json:"*local_commands"`
 }
 
 type actionEmailJSON struct {
@@ -258,14 +241,4 @@ type actionHTTPJSON struct {
 
 type actionLocalCommandsJSON struct {
 	Enabled bool `json:"enabled"`
-}
-
-// ActionChainsJSON ...
-type ActionChainsJSON struct {
-	List map[string][]actionChainAction `json:"list"`
-}
-
-// DataGroupsJSON ...
-type DataGroupsJSON struct {
-	List map[string]DataGroup `json:"list"`
 }
