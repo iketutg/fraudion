@@ -2,8 +2,7 @@ package fraudion
 
 import (
 	"time"
-
-	"github.com/andmar/fraudion/config"
+	//"github.com/andmar/fraudion/config"
 )
 
 func init() {
@@ -17,8 +16,8 @@ var Global *Fraudion
 // Fraudion The "Type"
 type Fraudion struct {
 	StartUpTime time.Time
-	Configs     *config.Config
-	State       *State
+	//Configs     *config.Config
+	State *State
 }
 
 // State ...

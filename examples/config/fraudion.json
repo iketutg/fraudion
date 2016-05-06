@@ -27,9 +27,6 @@
 		}
 	},
 
-
-
-
   "monitors": {
 
     "simultaneous_calls": {
@@ -37,7 +34,7 @@
       "execute_interval": "5m",         // [Optional] Specifies in which time interval the Trigger runs. If omitted defaults to "DefaultTriggerCheckPeriod"
       "hit_threshold": 5,               // [Optional]
       "minimum_number_length": 5,       // [Optional]
-      "action_chain_name": "*default",   // [Optional] Specifies the name of the Action Chain that will be executed once this Trigger is "pulled". if ommited defaults to "*default"
+      "action_chain_name": "*default",  // [Optional] Specifies the name of the Action Chain that will be executed once this Trigger is "pulled". if ommited defaults to "*default"
 			"action_chain_holdoff_period": 0,
 			"action_chain_run_count": 0,
     },

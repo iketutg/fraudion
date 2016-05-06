@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	//"reflect"
 	"strings"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/andmar/fraudion/config"
 	"github.com/andmar/fraudion/fraudion"
 	"github.com/andmar/fraudion/logger"
-	//"github.com/andmar/fraudion/softswitch"
 
 	"github.com/andmar/marlog"
 
@@ -55,11 +53,10 @@ func main() {
 	log.SetStamp("INFO", "*STDOUT")
 
 	fraudion.StartUpTime = time.Now()
+
+	// TODO: Error handling here?
 	log.LogS("INFO", fmt.Sprintf("Starting Fraudion at %s", fraudion.StartUpTime))
 	log.LogS("INFO", "Parsing CLI flags...")
-	//logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf(fmt.Sprintf("Starting Fraudion at %s", fraudion.StartUpTime)), false)
-	//logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Parsing CLI flags..."), false)
-
 	flag.Parse()
 
 	// TODO: This should default to constDefaultLogFile, maybe even handle a flag to disable logging
@@ -68,10 +65,7 @@ func main() {
 		logFile, err := os.OpenFile(filepath.Join(*argCLILogTo, *argCLILogFilename), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
 
-			log.LogS("ERROR", fmt.Sprintf("Can't start, there was a problem (%s) opening the Log file. :(", err))
-			//logger.Log.Write(logger.ConstLoggerLevelError, fmt.Sprintf("Can't start, there was a problem (%s) opening the Log file. :(", err), true)
-
-			//os.Exit(1) // TODO: Add a configuration item to tell the system to quit when logging is not possible
+			log.LogO("ERROR", fmt.Sprintf("Can't start, there was a problem (%s) opening the Log file. :(", err), marlog.OptionFatal)
 
 		} else {
 
@@ -83,31 +77,42 @@ func main() {
 			log.AddOuputHandles("ERROR", "MAINFILE")
 
 			log.LogS("INFO", fmt.Sprintf("Started logging to \"%s\"", filepath.Join(*argCLILogTo, *argCLILogFilename)))
-			//logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Outputting Log to \"%s\"", *argCLILogTo), false)
 
 			logger.Log.SetHandles(logFile, logFile, logFile, logFile) // NOTE: Overwrite the default handles on the Logger object.
-
-			//log.LogS("INFO", "\n")
-			//logger.Log.Write(logger.ConstLoggerLevelInfo, "\n", false)
 
 		}
 
 	}
 
-	// TODO: The parsing/validation/loading will be moved to a special Init function at package level, as the Softswitch package does
-	//logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Starting Fraudion Log at %s", fraudion.StartUpTime), false)
-
 	if err := config.Parse(*argCLIConfigIn, *argCLIConfigFilename); err != nil {
-		log.LogO("ERROR:", err.Error(), marlog.OptionFatal)
+		log.LogO("ERROR", err.Error(), marlog.OptionFatal)
 	}
 
-	fmt.Println(config.Parsed.General)
-	fmt.Println(config.Parsed.Softswitch)
-	fmt.Println(config.Parsed.CDRsSources)
-	fmt.Println(config.Parsed.Monitors)
-	fmt.Println(config.Parsed.Actions)
-	fmt.Println(config.Parsed.ActionChains)
-	fmt.Println(config.Parsed.DataGroups)
+	// fmt.Println(config.Parsed.General)
+	// fmt.Println(config.Parsed.Softswitch)
+	// fmt.Println(config.Parsed.CDRsSources)
+	// fmt.Println(config.Parsed.Monitors.DangerousDestinations, config.Parsed.Monitors.ExpectedDestinations, config.Parsed.Monitors.SimultaneousCalls, config.Parsed.Monitors.SmallDurationCalls)
+	// fmt.Println(config.Parsed.Actions.Email, config.Parsed.Actions.Call, config.Parsed.Actions.HTTP, config.Parsed.Actions.LocalCommands)
+	// fmt.Println(config.Parsed.ActionChains)
+	// fmt.Println(config.Parsed.DataGroups)
+
+	//if err := config.Validate(); err != nil {
+	//log.LogO("ERRORS:", err.Error(), marlog.OptionFatal) // TODO: This has to be changed becase config.Validate() returns an array/slice of errors
+	//}
+
+	if err := config.Load(); err != nil {
+		log.LogO("ERROR", err.Error(), marlog.OptionFatal) // TODO: This has to be changed becase config.Validate() returns an array/slice of errors
+	}
+
+	fmt.Println(config.Loaded.General)
+	fmt.Println(config.Loaded.Softswitch)
+	fmt.Println(config.Loaded.CDRsSources)
+	fmt.Println(config.Loaded.Monitors.DangerousDestinations, config.Loaded.Monitors.ExpectedDestinations, config.Loaded.Monitors.SimultaneousCalls, config.Loaded.Monitors.SmallDurationCalls)
+	fmt.Println(config.Loaded.Actions.Email, config.Loaded.Actions.Call, config.Loaded.Actions.HTTP, config.Loaded.Actions.LocalCommands)
+	fmt.Println(config.Loaded.ActionChains)
+	fmt.Println(config.Loaded.DataGroups)
+
+	os.Exit(-1)
 
 	/*
 		configs, err := config.Load(configsJSON)

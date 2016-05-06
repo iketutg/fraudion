@@ -1,242 +1,206 @@
 package config
 
 import (
-	// "fmt"
+	"fmt"
+	"strconv"
 	"time"
-	//
-	// "github.com/andmar/fraudion/logger"
-	// "github.com/andmar/fraudion/utils"
 )
 
 const (
-	constMinimumTriggerExecuteInterval   = "1m"
-	constMaximumActionChainHoldoffPeriod = "5m"
+	defaultExecuteInterval          = "5m"
+	defaultHitThreshold             = 5
+	defaultMinimumNumberLength      = 5
+	defaultActionChainMame          = "*default"
+	defaultActionChainHoldoffPeriod = 0
+	defaultActionChainRunCount      = 0
 )
 
-var (
-	constSupportedSoftware2   = []string{"*ast_elastix_2.3", "*ast_1.8"}
-	constSupportedCDRSources2 = []string{"*db_mysql"}
-)
+// Loaded After config.Load(...) is called, this variable holds the final configuration values in it's appropriate types
+var Loaded *loadedValues
 
-// Loaded ...
-var Loaded *Config
-
-// Load ...
+// Load Loads configuration from specified file
 func Load() error {
 
-	configs := new(Config)
+	Loaded = new(loadedValues)
 
-	/*fmt.Println(configs)
+	// General Section
 
-	logger.Log.Write(logger.ConstLoggerLevelInfo, "Validating and Loading configurations...", false)
+	// Softswitch Section
+	Loaded.Softswitch.Brand = Parsed.Softswitch.Brand
+	Loaded.Softswitch.Version = Parsed.Softswitch.Version
+	Loaded.Softswitch.CDRsSource = Parsed.Softswitch.CDRsSource
 
-	// ** General Section
-
-	// * MonitoredSoftware
-	if configsJSON.General.MonitoredSoftware == "" {
-		return nil, utils.DebugLogAndGetError(fmt.Sprintf("\"monitored_software\" value in section \"general\" missing OR is empty."), true)
+	// CDRs Sources
+	Loaded.CDRsSources = make(map[string]map[string]string)
+	for k, v := range *Parsed.CDRsSources {
+		Loaded.CDRsSources[k] = v
 	}
-	found := utils.StringInStringsSlice(configsJSON.General.MonitoredSoftware, constSupportedSoftware2)
-	if !found {
-		return nil, utils.DebugLogAndGetError(fmt.Sprintf("\"monitored_software\" value in section \"general\" must be one of %s", constSupportedSoftware2), true)
-	}
-	configs.General.MonitoredSoftware = configsJSON.General.MonitoredSoftware
 
-	// * DefaultTriggerExecuteInterval
-	if configsJSON.General.DefaultTriggerExecuteInterval == "" {
-		return nil, utils.DebugLogAndGetError(fmt.Sprintf("\"default_trigger_execute_interval\" value in section \"general\" missing OR is empty."), true)
-	}
-	durationDefaultTriggerExecuteInterval, err := time.ParseDuration(configsJSON.General.DefaultTriggerExecuteInterval)
+	// Monitors
+	Loaded.Monitors.SimultaneousCalls.Enabled = Parsed.Monitors.SimultaneousCalls.Enabled
+	executeInterval, err := time.ParseDuration(Parsed.Monitors.SimultaneousCalls.ExecuteInterval)
 	if err != nil {
-		return nil, utils.DebugLogAndGetError(fmt.Sprintf("\"default_trigger_execute_interval\" value in section \"general\" is not a valid duration. Must be a parseable duration, a number followed by one of: \"s\", \"m\" or \"h\" for \"seconds\", \"minutes\" and \"hours\" respectively"), true)
+		return fmt.Errorf("error parsing duration for \"execute_interval\" in \"monitors/simultaneous_calls\"")
 	}
-	durationConstMinimumTriggerExecuteInterval, err := time.ParseDuration(constMinimumTriggerExecuteInterval)
+	Loaded.Monitors.SimultaneousCalls.ExecuteInterval = executeInterval
+	Loaded.Monitors.SimultaneousCalls.HitThreshold = Parsed.Monitors.SimultaneousCalls.HitThreshold
+	Loaded.Monitors.SimultaneousCalls.MinimumNumberLength = Parsed.Monitors.SimultaneousCalls.MinimumNumberLength
+	Loaded.Monitors.SimultaneousCalls.ActionChainName = Parsed.Monitors.SimultaneousCalls.ActionChainName
+	Loaded.Monitors.SimultaneousCalls.ActionChainHoldoffPeriod = Parsed.Monitors.SimultaneousCalls.ActionChainHoldoffPeriod
+	Loaded.Monitors.SimultaneousCalls.MaxActionChainRunCount = Parsed.Monitors.SimultaneousCalls.MaxActionChainRunCount
+
+	Loaded.Monitors.DangerousDestinations.Enabled = Parsed.Monitors.DangerousDestinations.Enabled
+	executeInterval, err = time.ParseDuration(Parsed.Monitors.DangerousDestinations.ExecuteInterval)
 	if err != nil {
-		return nil, utils.DebugLogAndGetError("(Internal) There seems to be an issue with the definition of constMinimumTriggerExecuteInterval2", true)
+		return fmt.Errorf("error parsing duration for \"execute_interval\" in \"monitors/dangerous_destinations\"")
 	}
-	if durationDefaultTriggerExecuteInterval < durationConstMinimumTriggerExecuteInterval {
-		return nil, utils.DebugLogAndGetError(fmt.Sprintf("\"default_trigger_execute_interval\" value in section \"general\" is too small. Value must be > %s", constMinimumTriggerExecuteInterval), true)
+	Loaded.Monitors.DangerousDestinations.ExecuteInterval = executeInterval
+	Loaded.Monitors.DangerousDestinations.HitThreshold = Parsed.Monitors.DangerousDestinations.HitThreshold
+	Loaded.Monitors.DangerousDestinations.MinimumNumberLength = Parsed.Monitors.DangerousDestinations.MinimumNumberLength
+	Loaded.Monitors.DangerousDestinations.ActionChainName = Parsed.Monitors.DangerousDestinations.ActionChainName
+	Loaded.Monitors.DangerousDestinations.ActionChainHoldoffPeriod = Parsed.Monitors.DangerousDestinations.ActionChainHoldoffPeriod
+	Loaded.Monitors.DangerousDestinations.MaxActionChainRunCount = Parsed.Monitors.DangerousDestinations.MaxActionChainRunCount
+	if considerFromLast, err := time.ParseDuration(Parsed.Monitors.DangerousDestinations.ConsiderCDRsFromLast); err != nil {
+		considerFromLastUInt, err := strconv.Atoi(Parsed.Monitors.DangerousDestinations.ConsiderCDRsFromLast)
+		if err != nil {
+			return fmt.Errorf("error converting value of \"consider_cdrs_from_last\" to int as a fallback from parseable time.Duration in \"monitors/dangerous_destinations\"")
+		}
+		considerFromLastDuration, err := time.ParseDuration(strconv.FormatUint(uint64(considerFromLastUInt*24), 10) + "h")
+		if err != nil {
+			return fmt.Errorf("error creating duration for \"consider_cdrs_from_last\" in \"monitors/dangerous_destinations\"")
+		}
+		Loaded.Monitors.DangerousDestinations.ConsiderCDRsFromLast = considerFromLastDuration
+	} else {
+		Loaded.Monitors.DangerousDestinations.ConsiderCDRsFromLast = considerFromLast
 	}
+	Loaded.Monitors.DangerousDestinations.PrefixList = Parsed.Monitors.DangerousDestinations.PrefixList
+	Loaded.Monitors.DangerousDestinations.MatchRegex = Parsed.Monitors.DangerousDestinations.MatchRegex
+	Loaded.Monitors.DangerousDestinations.IgnoreRegex = Parsed.Monitors.DangerousDestinations.IgnoreRegex
 
-	configs.General.DefaultTriggerExecuteInterval = durationDefaultTriggerExecuteInterval
-
-	// * DefaultHitThreshold
-	if configsJSON.General.DefaultHitThreshold == 0 {
-		return nil, utils.DebugLogAndGetError(fmt.Sprintf("\"default_hit_threshold\" value in section \"general\" missing OR is 0."), true)
-	}
-
-	configs.General.DefaultHitThreshold = configsJSON.General.DefaultHitThreshold
-
-	// * DefaultMinimumDestinationNumberLength
-	if configsJSON.General.DefaultMinimumDestinationNumberLength == 0 {
-		return nil, utils.DebugLogAndGetError(fmt.Sprintf("\"default_minimum_destination_number_length\" value in section \"general\" missing OR is 0."), true)
-	}
-
-	configs.General.DefaultMinimumDestinationNumberLength = configsJSON.General.DefaultMinimumDestinationNumberLength
-
-	// * DefaultActionChainHoldoffPeriod
-	if configsJSON.General.DefaultActionChainHoldoffPeriod == "" {
-		return nil, utils.DebugLogAndGetError(fmt.Sprintf("\"default_action_chain_holdoff_period\" value in section \"general\" missing OR empty."), true)
-	}
-	durationDefaultActionChainHoldoffPeriod, err := time.ParseDuration(configsJSON.General.DefaultActionChainHoldoffPeriod)
+	Loaded.Monitors.ExpectedDestinations.Enabled = Parsed.Monitors.ExpectedDestinations.Enabled
+	executeInterval, err = time.ParseDuration(Parsed.Monitors.ExpectedDestinations.ExecuteInterval)
 	if err != nil {
-		return nil, utils.DebugLogAndGetError(fmt.Sprintf("\"default_action_chain_holdoff_period\" value in section \"general\" is not a valid duration. Must be a parseable duration, a number followed by one of: \"s\", \"m\" or \"h\" for \"seconds\", \"minutes\" and \"hours\" respectively"), true)
+		return fmt.Errorf("error parsing duration for \"execute_interval\" in \"monitors/expected_destinations\"")
 	}
-	durationConstMaximumActionChainHoldoffPeriod, err := time.ParseDuration(constMaximumActionChainHoldoffPeriod)
+	Loaded.Monitors.ExpectedDestinations.ExecuteInterval = executeInterval
+	Loaded.Monitors.ExpectedDestinations.HitThreshold = Parsed.Monitors.ExpectedDestinations.HitThreshold
+	Loaded.Monitors.ExpectedDestinations.MinimumNumberLength = Parsed.Monitors.ExpectedDestinations.MinimumNumberLength
+	Loaded.Monitors.ExpectedDestinations.ActionChainName = Parsed.Monitors.ExpectedDestinations.ActionChainName
+	Loaded.Monitors.ExpectedDestinations.ActionChainHoldoffPeriod = Parsed.Monitors.ExpectedDestinations.ActionChainHoldoffPeriod
+	Loaded.Monitors.ExpectedDestinations.MaxActionChainRunCount = Parsed.Monitors.ExpectedDestinations.MaxActionChainRunCount
+	if considerFromLast, err := time.ParseDuration(Parsed.Monitors.ExpectedDestinations.ConsiderCDRsFromLast); err != nil {
+		considerFromLastUInt, err := strconv.Atoi(Parsed.Monitors.ExpectedDestinations.ConsiderCDRsFromLast)
+		if err != nil {
+			return fmt.Errorf("error converting value of \"consider_cdrs_from_last\" to int as a fallback from parseable time.Duration in \"monitors/expected_destinations\"")
+		}
+		considerFromLastDuration, err := time.ParseDuration(strconv.FormatUint(uint64(considerFromLastUInt*24), 10) + "h")
+		if err != nil {
+			return fmt.Errorf("error creating duration for \"consider_cdrs_from_last\" in \"monitors/expected_destinations\"")
+		}
+		Loaded.Monitors.ExpectedDestinations.ConsiderCDRsFromLast = considerFromLastDuration
+	} else {
+		Loaded.Monitors.ExpectedDestinations.ConsiderCDRsFromLast = considerFromLast
+	}
+	Loaded.Monitors.ExpectedDestinations.PrefixList = Parsed.Monitors.ExpectedDestinations.PrefixList
+	Loaded.Monitors.ExpectedDestinations.MatchRegex = Parsed.Monitors.ExpectedDestinations.MatchRegex
+	Loaded.Monitors.ExpectedDestinations.IgnoreRegex = Parsed.Monitors.ExpectedDestinations.IgnoreRegex
+
+	Loaded.Monitors.SmallDurationCalls.Enabled = Parsed.Monitors.SmallDurationCalls.Enabled
+	executeInterval, err = time.ParseDuration(Parsed.Monitors.SmallDurationCalls.ExecuteInterval)
 	if err != nil {
-		return nil, utils.DebugLogAndGetError("(Internal) There seems to be an issue with the definition of constMaximumActionChainHoldoffPeriod", true)
+		return fmt.Errorf("error parsing duration for \"execute_interval\" in \"monitors/small_duration_calls\"")
 	}
-	if durationDefaultActionChainHoldoffPeriod > durationConstMaximumActionChainHoldoffPeriod {
-		return nil, utils.DebugLogAndGetError(fmt.Sprintf("\"default_action_chain_holdoff_period\" value in section \"general\" is too small. Value must be > %s", constMaximumActionChainHoldoffPeriod), true)
-	}
-
-	configs.General.DefaultActionChainHoldoffPeriod = durationDefaultActionChainHoldoffPeriod
-
-	// * DefaultActionChainRunCount
-	if configsJSON.General.DefaultActionChainRunCount == 0 {
-		return nil, utils.DebugLogAndGetError(fmt.Sprintf("\"default_action_chain_run_count\" value in section \"general\" missing OR 0."), true)
-	}
-
-	configs.General.DefaultActionChainRunCount = configsJSON.General.DefaultActionChainRunCount
-
-	// TODO: From this point the validateOnly flag is not yet checked and used to do something
-
-	// ** CDRsSource Section
-
-	configs.CDRsSources = configsJSON.CDRsSources
-
-	// ** Triggers Section
-
-	// * SimultaneousCalls
-	configs.Triggers.SimultaneousCalls.Enabled = configsJSON.Triggers.SimultaneousCalls.Enabled
-	if configs.Triggers.SimultaneousCalls.Enabled {
-		configs.Triggers.SimultaneousCalls.ExecuteInterval, err = time.ParseDuration(configsJSON.Triggers.SimultaneousCalls.ExecuteInterval)
+	Loaded.Monitors.SmallDurationCalls.ExecuteInterval = executeInterval
+	Loaded.Monitors.SmallDurationCalls.HitThreshold = Parsed.Monitors.SmallDurationCalls.HitThreshold
+	Loaded.Monitors.SmallDurationCalls.MinimumNumberLength = Parsed.Monitors.SmallDurationCalls.MinimumNumberLength
+	Loaded.Monitors.SmallDurationCalls.ActionChainName = Parsed.Monitors.SmallDurationCalls.ActionChainName
+	Loaded.Monitors.SmallDurationCalls.ActionChainHoldoffPeriod = Parsed.Monitors.SmallDurationCalls.ActionChainHoldoffPeriod
+	Loaded.Monitors.SmallDurationCalls.MaxActionChainRunCount = Parsed.Monitors.SmallDurationCalls.MaxActionChainRunCount
+	if considerFromLast, err := time.ParseDuration(Parsed.Monitors.SmallDurationCalls.ConsiderCDRsFromLast); err != nil {
+		considerFromLastUInt, err := strconv.Atoi(Parsed.Monitors.SmallDurationCalls.ConsiderCDRsFromLast)
 		if err != nil {
-			return nil, utils.DebugLogAndGetError(fmt.Sprintf("Error message missing..."), true)
+			return fmt.Errorf("error converting value of \"consider_cdrs_from_last\" to int as a fallback from parseable time.Duration in \"monitors/small_duration_calls\"")
 		}
-		configs.Triggers.SimultaneousCalls.HitThreshold = configsJSON.Triggers.SimultaneousCalls.HitThreshold
-		configs.Triggers.SimultaneousCalls.MinimumNumberLength = configsJSON.Triggers.SimultaneousCalls.MinimumNumberLength
-		configs.Triggers.SimultaneousCalls.ActionChainName = configsJSON.Triggers.SimultaneousCalls.ActionChainName
-		configs.Triggers.SimultaneousCalls.MaxActionChainRunCount = configsJSON.Triggers.SimultaneousCalls.MaxActionChainRunCount
-		//state.StateTriggers.StateSimultaneousCalls.ActionChainRunCount = configsJSON.General.DefaultActionChainRunCount
-	}
-
-	// * DangerousDestinations
-	configs.Triggers.DangerousDestinations.Enabled = configsJSON.Triggers.DangerousDestinations.Enabled
-	if configs.Triggers.DangerousDestinations.Enabled {
-		configs.Triggers.DangerousDestinations.ExecuteInterval, err = time.ParseDuration(configsJSON.Triggers.DangerousDestinations.ExecuteInterval)
+		considerFromLastDuration, err := time.ParseDuration(strconv.FormatUint(uint64(considerFromLastUInt*24), 10) + "h")
 		if err != nil {
-			return nil, utils.DebugLogAndGetError(fmt.Sprintf("Error message missing..."), true)
+			return fmt.Errorf("error creating duration for \"consider_cdrs_from_last\" in \"monitors/small_duration_calls\"")
 		}
-		configs.Triggers.DangerousDestinations.HitThreshold = configsJSON.Triggers.DangerousDestinations.HitThreshold
-		configs.Triggers.DangerousDestinations.MinimumNumberLength = configsJSON.Triggers.DangerousDestinations.MinimumNumberLength
-		configs.Triggers.DangerousDestinations.ActionChainName = configsJSON.Triggers.DangerousDestinations.ActionChainName
-		configs.Triggers.DangerousDestinations.MaxActionChainRunCount = configsJSON.Triggers.DangerousDestinations.MaxActionChainRunCount
-		configs.Triggers.DangerousDestinations.PrefixList = configsJSON.Triggers.DangerousDestinations.PrefixList
-		configs.Triggers.DangerousDestinations.ConsiderCDRsFromLast = configsJSON.Triggers.DangerousDestinations.ConsiderCDRsFromLast
-		configs.Triggers.DangerousDestinations.MatchRegex = configsJSON.Triggers.DangerousDestinations.MatchRegex
-		configs.Triggers.DangerousDestinations.IgnoreRegex = configsJSON.Triggers.DangerousDestinations.IgnoreRegex
-		//state.StateTriggers.StateDangerousDestinations.ActionChainRunCount = configsJSON.General.DefaultActionChainRunCount
+		Loaded.Monitors.SmallDurationCalls.ConsiderCDRsFromLast = considerFromLastDuration
+	} else {
+		Loaded.Monitors.SmallDurationCalls.ConsiderCDRsFromLast = considerFromLast
+	}
+	durationThreshold, err := time.ParseDuration(Parsed.Monitors.SmallDurationCalls.DurationThreshold)
+	if err != nil {
+		return fmt.Errorf("error parsing duration for \"duration_threshold\" in \"monitors/small_duration_calls\"")
+	}
+	Loaded.Monitors.SmallDurationCalls.DurationThreshold = durationThreshold
+
+	// Actions
+	fmt.Println(Parsed.Actions.Email)
+	fmt.Println(*Parsed.Actions.Email)
+	if Parsed.Actions.Email != nil {
+		Loaded.Actions.Email = new(actionEmail)
+		Loaded.Actions.Email.Enabled = Parsed.Actions.Email.Enabled
+		Loaded.Actions.Email.Username = Parsed.Actions.Email.Username
+		Loaded.Actions.Email.Password = Parsed.Actions.Email.Password
+		Loaded.Actions.Email.Message = Parsed.Actions.Email.Message
+	}
+	if Parsed.Actions.Call != nil {
+		Loaded.Actions.Call = new(actionCall)
+		Loaded.Actions.Call.Enabled = Parsed.Actions.Call.Enabled
+	}
+	if Parsed.Actions.HTTP != nil {
+		Loaded.Actions.HTTP = new(actionHTTP)
+		Loaded.Actions.HTTP.Enabled = Parsed.Actions.HTTP.Enabled
+	}
+	if Parsed.Actions.LocalCommands != nil {
+		Loaded.Actions.LocalCommands = new(actionLocalCommands)
+		Loaded.Actions.LocalCommands.Enabled = Parsed.Actions.LocalCommands.Enabled
 	}
 
-	// * ExpectedDestinations
-	configs.Triggers.ExpectedDestinations.Enabled = configsJSON.Triggers.ExpectedDestinations.Enabled
-	if configs.Triggers.ExpectedDestinations.Enabled {
-		configs.Triggers.ExpectedDestinations.ExecuteInterval, err = time.ParseDuration(configsJSON.Triggers.ExpectedDestinations.ExecuteInterval)
-		if err != nil {
-			return nil, utils.DebugLogAndGetError(fmt.Sprintf("Error message missing..."), true)
-		}
-		configs.Triggers.ExpectedDestinations.HitThreshold = configsJSON.Triggers.ExpectedDestinations.HitThreshold
-		configs.Triggers.ExpectedDestinations.MinimumNumberLength = configsJSON.Triggers.ExpectedDestinations.MinimumNumberLength
-		configs.Triggers.ExpectedDestinations.ActionChainName = configsJSON.Triggers.ExpectedDestinations.ActionChainName
-		configs.Triggers.ExpectedDestinations.MaxActionChainRunCount = configsJSON.Triggers.ExpectedDestinations.MaxActionChainRunCount
-		configs.Triggers.ExpectedDestinations.PrefixList = configsJSON.Triggers.ExpectedDestinations.PrefixList
-		configs.Triggers.ExpectedDestinations.ConsiderCDRsFromLast = configsJSON.Triggers.ExpectedDestinations.ConsiderCDRsFromLast
-		configs.Triggers.ExpectedDestinations.MatchRegex = configsJSON.Triggers.ExpectedDestinations.MatchRegex
-		configs.Triggers.ExpectedDestinations.IgnoreRegex = configsJSON.Triggers.ExpectedDestinations.IgnoreRegex
-		//state.StateTriggers.StateExpectedDestinations.ActionChainRunCount = configsJSON.General.DefaultActionChainRunCount
+	// Action Chains
+	Loaded.ActionChains = make(map[string][]actionChainAction)
+	for k, v := range *Parsed.ActionChains {
+		Loaded.ActionChains[k] = v
 	}
 
-	// * SmallDurationCalls
-	configs.Triggers.SmallDurationCalls.Enabled = configsJSON.Triggers.ExpectedDestinations.Enabled
-	if configs.Triggers.SmallDurationCalls.Enabled {
-		configs.Triggers.SmallDurationCalls.ExecuteInterval, err = time.ParseDuration(configsJSON.Triggers.ExpectedDestinations.ExecuteInterval)
-		if err != nil {
-			return nil, utils.DebugLogAndGetError(fmt.Sprintf("Error message missing..."), true)
-		}
-		configs.Triggers.SmallDurationCalls.HitThreshold = configsJSON.Triggers.SmallDurationCalls.HitThreshold
-		configs.Triggers.SmallDurationCalls.MinimumNumberLength = configsJSON.Triggers.SmallDurationCalls.MinimumNumberLength
-		configs.Triggers.SmallDurationCalls.ActionChainName = configsJSON.Triggers.SmallDurationCalls.ActionChainName
-		configs.Triggers.SmallDurationCalls.MaxActionChainRunCount = configsJSON.Triggers.SmallDurationCalls.MaxActionChainRunCount
-		configs.Triggers.SmallDurationCalls.ConsiderCDRsFromLast = configsJSON.Triggers.SmallDurationCalls.ConsiderCDRsFromLast
-		configs.Triggers.SmallDurationCalls.DurationThreshold, err = time.ParseDuration(configsJSON.Triggers.SmallDurationCalls.DurationThreshold)
-		if err != nil {
-			return nil, utils.DebugLogAndGetError(fmt.Sprintf("Error message missing..."), true)
-		}
-		//state.StateTriggers.StateSmallDurationCalls.ActionChainRunCount = configsJSON.General.DefaultActionChainRunCount
+	// Data Groups
+	Loaded.DataGroups = make(map[string]dataGroup)
+	for k, v := range *Parsed.DataGroups {
+		Loaded.DataGroups[k] = v
 	}
 
-	// ** Actions Section
-
-	// * Email
-	configs.Actions.Email.Enabled = configsJSON.Actions.Email.Enabled
-	if configs.Actions.Email.Enabled {
-		configs.Actions.Email.Username = configsJSON.Actions.Email.Username
-		configs.Actions.Email.Password = configsJSON.Actions.Email.Password
-		configs.Actions.Email.Message = configsJSON.Actions.Email.Message
-	}
-
-	// * HTTP
-	configs.Actions.HTTP.Enabled = configsJSON.Actions.HTTP.Enabled
-
-	// * Call
-	configs.Actions.Call.Enabled = configsJSON.Actions.Call.Enabled
-
-	// * LocalCommands
-	configs.Actions.LocalCommands.Enabled = configsJSON.Actions.LocalCommands.Enabled
-
-	// ** ActionChains Section
-	configs.ActionChains.List = configsJSON.ActionChains.List
-
-	// ** DataGroups Section
-	configs.DataGroups.List = configsJSON.DataGroups.List
-
-	logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Loaded Configs: %v", configs), false)
-	*/
-	return configs, nil
+	return nil
 
 }
 
-// Config ...
-type Config struct {
-	General      General
-	CDRsSources  interface{}
-	Triggers     Triggers
-	Actions      Actions
-	ActionChains ActionChains
-	DataGroups   DataGroups
+type loadedValues struct {
+	General      general
+	Softswitch   softswitch
+	CDRsSources  cdrsSources
+	Monitors     monitors
+	Actions      actions
+	ActionChains actionChains
+	DataGroups   dataGroups
 }
 
-// General ...
-type General struct {
-	MonitoredSoftware                     string
-	CDRsSource                            string
-	DefaultTriggerExecuteInterval         time.Duration
-	DefaultHitThreshold                   uint32
-	DefaultMinimumDestinationNumberLength uint32
-	DefaultActionChainHoldoffPeriod       time.Duration
-	DefaultActionChainRunCount            uint32
+type general struct{}
+
+type softswitch struct {
+	Brand      string
+	Version    string
+	CDRsSource string
 }
 
-// Triggers ...
-type Triggers struct {
-	SimultaneousCalls     triggerSimultaneousCalls
-	DangerousDestinations triggerDangerousDestinations
-	ExpectedDestinations  triggerExpectedDestinations
-	SmallDurationCalls    triggerSmallCallDurations
+// Monitors ...
+type monitors struct {
+	SimultaneousCalls     monitorSimultaneousCalls
+	DangerousDestinations monitorDangerousDestinations
+	ExpectedDestinations  monitorExpectedDestinations
+	SmallDurationCalls    monitorSmallCallDurations
 }
 
-type triggerSimultaneousCalls struct {
+type monitorBase struct {
 	Enabled                  bool
 	ExecuteInterval          time.Duration
 	HitThreshold             uint32
@@ -246,52 +210,37 @@ type triggerSimultaneousCalls struct {
 	MaxActionChainRunCount   uint32
 }
 
-type triggerDangerousDestinations struct {
-	Enabled                  bool
-	ExecuteInterval          time.Duration
-	HitThreshold             uint32
-	MinimumNumberLength      uint32
-	ActionChainName          string
-	ActionChainHoldoffPeriod uint32
-	MaxActionChainRunCount   uint32
-	ConsiderCDRsFromLast     string
-	PrefixList               []string
-	MatchRegex               string
-	IgnoreRegex              string
+type monitorSimultaneousCalls struct {
+	monitorBase
 }
 
-type triggerExpectedDestinations struct {
-	Enabled                  bool
-	ExecuteInterval          time.Duration
-	HitThreshold             uint32
-	MinimumNumberLength      uint32
-	ActionChainName          string
-	ActionChainHoldoffPeriod uint32
-	MaxActionChainRunCount   uint32
-	ConsiderCDRsFromLast     string
-	PrefixList               []string
-	MatchRegex               string
-	IgnoreRegex              string
+type monitorDangerousDestinations struct {
+	monitorBase
+	ConsiderCDRsFromLast time.Duration
+	PrefixList           []string
+	MatchRegex           string
+	IgnoreRegex          string
 }
 
-type triggerSmallCallDurations struct {
-	Enabled                  bool
-	ExecuteInterval          time.Duration
-	HitThreshold             uint32
-	MinimumNumberLength      uint32
-	ActionChainName          string
-	ActionChainHoldoffPeriod uint32
-	MaxActionChainRunCount   uint32
-	ConsiderCDRsFromLast     string
-	DurationThreshold        time.Duration
+type monitorExpectedDestinations struct {
+	monitorBase
+	ConsiderCDRsFromLast time.Duration
+	PrefixList           []string
+	MatchRegex           string
+	IgnoreRegex          string
 }
 
-// Actions ...
-type Actions struct {
-	Email         actionEmail
-	Call          actionCall
-	HTTP          actionHTTP
-	LocalCommands actionLocalCommands
+type monitorSmallCallDurations struct {
+	monitorBase
+	ConsiderCDRsFromLast time.Duration
+	DurationThreshold    time.Duration
+}
+
+type actions struct {
+	Email         *actionEmail
+	Call          *actionCall
+	HTTP          *actionHTTP
+	LocalCommands *actionLocalCommands
 }
 
 type actionEmail struct {
@@ -311,30 +260,4 @@ type actionHTTP struct {
 
 type actionLocalCommands struct {
 	Enabled bool
-}
-
-// ActionChains ...
-type ActionChains struct {
-	List map[string][]actionChainAction
-}
-
-type actionChainAction struct {
-	ActionName     string   `json:"action"`
-	DataGroupNames []string `json:"data_groups"`
-}
-
-// DataGroups ...
-type DataGroups struct {
-	List map[string]dataGroup
-}
-
-// dataGroup ...
-type dataGroup struct {
-	PhoneNumber      string            `json:"phone_number"`
-	EmailAddress     string            `json:"email_address"`
-	HTTPURL          string            `json:"http_url"`
-	HTTPMethod       string            `json:"http_method"`
-	HTTPParameters   map[string]string `json:"http_parameters"`
-	CommandName      string            `json:"command_name"`
-	CommandArguments string            `json:"command_arguments"`
 }
