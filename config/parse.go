@@ -9,11 +9,11 @@ import (
 	"github.com/DisposaBoy/JsonConfigReader"
 )
 
-// Parsed After config.Parse(...) is called, this variable holds the values parsed from the JSON config file specified
-var Parsed *parsedValues
+// parsed After config.Parse(...) is called, this variable holds the values parsed from the JSON config file specified
+var parsed *parsedValues
 
-// Parse Parses the config file at "configDir" with name "configFileName" and puts the value on the config.Parsed variable
-func Parse(configDir string, configFileName string) error {
+// parse Parses the config file at "configDir" with name "configFileName" and puts the value on the config.Parsed variable
+func parse(configDir string, configFileName string) error {
 
 	// NOTE: JSON Related Help at https://github.com/DisposaBoy/JsonConfigReader, https://golang.org/pkg/encoding/json/, https://blog.golang.org/json-and-go
 	// NOTE: Anything that can't be found will be saved to the JSON objects with empty values for the specified types
@@ -24,11 +24,11 @@ func Parse(configDir string, configFileName string) error {
 	}
 	defer configFile.Close()
 
-	Parsed = new(parsedValues)
+	parsed = new(parsedValues)
 
 	// NOTE: Really? In the end it was only one line of code?
-	if err = json.NewDecoder(JsonConfigReader.New(configFile)).Decode(Parsed); err != nil {
-		Parsed = nil
+	if err = json.NewDecoder(JsonConfigReader.New(configFile)).Decode(parsed); err != nil {
+		parsed = nil
 		return err
 	}
 

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"github.com/andmar/fraudion/softswitch"
 )
 
 const (
@@ -18,50 +20,128 @@ const (
 // Loaded After config.Load(...) is called, this variable holds the final configuration values in it's appropriate types
 var Loaded *loadedValues
 
-// Load Loads configuration from specified file
-func Load() error {
+// Load SetsUp the loading of the configuration from specified file and handle outputs, keeps config.Loaded nil in case of some error happen
+func Load(configDir string, configFileName string, validateOnly bool) error {
+	if err := doLoad(configDir, configFileName, validateOnly); err != nil {
+		Loaded = nil
+		return err
+	} else {
+		return nil
+	}
+
+}
+
+// doLoad Loads configuration from specified file
+func doLoad(configDir string, configFileName string, validateOnly bool) error {
+
+	if err := parse(configDir, configFileName); err != nil {
+		return err
+	}
+
+	if hasErrors, errors := validate(); hasErrors == true {
+		return fmt.Errorf("Failed Validation. Errors: %s", errors) // TODO: Do something with the list of errors returned...
+	}
 
 	Loaded = new(loadedValues)
 
 	// General Section
 
-	// Softswitch Section
-	Loaded.Softswitch.Brand = Parsed.Softswitch.Brand
-	Loaded.Softswitch.Version = Parsed.Softswitch.Version
-	Loaded.Softswitch.CDRsSource = Parsed.Softswitch.CDRsSource
-
 	// CDRs Sources
-	Loaded.CDRsSources = make(map[string]map[string]string)
-	for k, v := range *Parsed.CDRsSources {
-		Loaded.CDRsSources[k] = v
+	Loaded.CDRsSources = *parsed.CDRsSources
+	sources := make(map[string]softswitch.CDRsSource)
+	for k, v := range Loaded.CDRsSources {
+
+		switch k {
+		case "*db_mysql":
+
+			source := new(softswitch.CDRsSourceDatabase)
+			source.UserName = v["user_name"]
+			source.UserPassword = v["user_password"]
+			source.DatabaseName = v["database_name"]
+			source.TableName = v["table_name"]
+			//source.MysqlOptions = v["mysql_options"] // TODO: This was removed because what this is used for is not MySQL options, is related to the Library used to connect to it
+
+			sources[k] = source
+
+		default:
+			return fmt.Errorf("Unknown CDR Source key value")
+		}
 	}
 
+	// fmt.Println(Loaded.CDRsSources)
+	// fmt.Println(sources)
+	// fmt.Println(sources["*db_mysql"])
+
+	// Softswitch Section
+	loadedSSInfo := *parsed.Softswitch
+	Loaded.Softswitch.Brand = loadedSSInfo.Brand
+	Loaded.Softswitch.Version = loadedSSInfo.Version
+	Loaded.Softswitch.CDRsSource = loadedSSInfo.CDRsSource
+
+	var ss *softswitch.Asterisk
+	switch parsed.Softswitch.Brand {
+
+	case "*asterisk":
+
+		ss = new(softswitch.Asterisk)
+		ss.Version = parsed.Softswitch.Version
+		loadedSource, found := sources[parsed.Softswitch.CDRsSource]
+		if found == false {
+			return fmt.Errorf("Could not find CDR Source in Loaded sources list")
+		}
+
+		switch parsed.Softswitch.CDRsSource {
+		case "*db_mysql":
+
+			loadedSourceConverted, ok := loadedSource.(softswitch.CDRsSourceDatabase) // TODO: Don't understand, yet, why this returns false when it should return true?  Is it because the value is of the correct type already?
+			if ok == true {
+				return fmt.Errorf("Something strange happened")
+			}
+
+			err := loadedSourceConverted.Connect()
+			if err != nil {
+				return err
+			}
+
+		default:
+			return fmt.Errorf("Unknown CDR Source key value")
+		}
+
+		ss.CDRsSource = loadedSource
+
+	default:
+		return fmt.Errorf("Unknown Softswitch Brand value")
+
+	}
+
+	softswitch.Monitored = ss
+
 	// Monitors
-	Loaded.Monitors.SimultaneousCalls.Enabled = Parsed.Monitors.SimultaneousCalls.Enabled
-	executeInterval, err := time.ParseDuration(Parsed.Monitors.SimultaneousCalls.ExecuteInterval)
+	Loaded.Monitors.SimultaneousCalls.Enabled = parsed.Monitors.SimultaneousCalls.Enabled
+	executeInterval, err := time.ParseDuration(parsed.Monitors.SimultaneousCalls.ExecuteInterval)
 	if err != nil {
 		return fmt.Errorf("error parsing duration for \"execute_interval\" in \"monitors/simultaneous_calls\"")
 	}
 	Loaded.Monitors.SimultaneousCalls.ExecuteInterval = executeInterval
-	Loaded.Monitors.SimultaneousCalls.HitThreshold = Parsed.Monitors.SimultaneousCalls.HitThreshold
-	Loaded.Monitors.SimultaneousCalls.MinimumNumberLength = Parsed.Monitors.SimultaneousCalls.MinimumNumberLength
-	Loaded.Monitors.SimultaneousCalls.ActionChainName = Parsed.Monitors.SimultaneousCalls.ActionChainName
-	Loaded.Monitors.SimultaneousCalls.ActionChainHoldoffPeriod = Parsed.Monitors.SimultaneousCalls.ActionChainHoldoffPeriod
-	Loaded.Monitors.SimultaneousCalls.MaxActionChainRunCount = Parsed.Monitors.SimultaneousCalls.MaxActionChainRunCount
+	Loaded.Monitors.SimultaneousCalls.HitThreshold = parsed.Monitors.SimultaneousCalls.HitThreshold
+	Loaded.Monitors.SimultaneousCalls.MinimumNumberLength = parsed.Monitors.SimultaneousCalls.MinimumNumberLength
+	Loaded.Monitors.SimultaneousCalls.ActionChainName = parsed.Monitors.SimultaneousCalls.ActionChainName
+	Loaded.Monitors.SimultaneousCalls.ActionChainHoldoffPeriod = parsed.Monitors.SimultaneousCalls.ActionChainHoldoffPeriod
+	Loaded.Monitors.SimultaneousCalls.MaxActionChainRunCount = parsed.Monitors.SimultaneousCalls.MaxActionChainRunCount
 
-	Loaded.Monitors.DangerousDestinations.Enabled = Parsed.Monitors.DangerousDestinations.Enabled
-	executeInterval, err = time.ParseDuration(Parsed.Monitors.DangerousDestinations.ExecuteInterval)
+	Loaded.Monitors.DangerousDestinations.Enabled = parsed.Monitors.DangerousDestinations.Enabled
+	executeInterval, err = time.ParseDuration(parsed.Monitors.DangerousDestinations.ExecuteInterval)
 	if err != nil {
 		return fmt.Errorf("error parsing duration for \"execute_interval\" in \"monitors/dangerous_destinations\"")
 	}
 	Loaded.Monitors.DangerousDestinations.ExecuteInterval = executeInterval
-	Loaded.Monitors.DangerousDestinations.HitThreshold = Parsed.Monitors.DangerousDestinations.HitThreshold
-	Loaded.Monitors.DangerousDestinations.MinimumNumberLength = Parsed.Monitors.DangerousDestinations.MinimumNumberLength
-	Loaded.Monitors.DangerousDestinations.ActionChainName = Parsed.Monitors.DangerousDestinations.ActionChainName
-	Loaded.Monitors.DangerousDestinations.ActionChainHoldoffPeriod = Parsed.Monitors.DangerousDestinations.ActionChainHoldoffPeriod
-	Loaded.Monitors.DangerousDestinations.MaxActionChainRunCount = Parsed.Monitors.DangerousDestinations.MaxActionChainRunCount
-	if considerFromLast, err := time.ParseDuration(Parsed.Monitors.DangerousDestinations.ConsiderCDRsFromLast); err != nil {
-		considerFromLastUInt, err := strconv.Atoi(Parsed.Monitors.DangerousDestinations.ConsiderCDRsFromLast)
+	Loaded.Monitors.DangerousDestinations.HitThreshold = parsed.Monitors.DangerousDestinations.HitThreshold
+	Loaded.Monitors.DangerousDestinations.MinimumNumberLength = parsed.Monitors.DangerousDestinations.MinimumNumberLength
+	Loaded.Monitors.DangerousDestinations.ActionChainName = parsed.Monitors.DangerousDestinations.ActionChainName
+	Loaded.Monitors.DangerousDestinations.ActionChainHoldoffPeriod = parsed.Monitors.DangerousDestinations.ActionChainHoldoffPeriod
+	Loaded.Monitors.DangerousDestinations.MaxActionChainRunCount = parsed.Monitors.DangerousDestinations.MaxActionChainRunCount
+	if considerFromLast, err := time.ParseDuration(parsed.Monitors.DangerousDestinations.ConsiderCDRsFromLast); err != nil {
+		considerFromLastUInt, err := strconv.Atoi(parsed.Monitors.DangerousDestinations.ConsiderCDRsFromLast)
 		if err != nil {
 			return fmt.Errorf("error converting value of \"consider_cdrs_from_last\" to int as a fallback from parseable time.Duration in \"monitors/dangerous_destinations\"")
 		}
@@ -73,23 +153,23 @@ func Load() error {
 	} else {
 		Loaded.Monitors.DangerousDestinations.ConsiderCDRsFromLast = considerFromLast
 	}
-	Loaded.Monitors.DangerousDestinations.PrefixList = Parsed.Monitors.DangerousDestinations.PrefixList
-	Loaded.Monitors.DangerousDestinations.MatchRegex = Parsed.Monitors.DangerousDestinations.MatchRegex
-	Loaded.Monitors.DangerousDestinations.IgnoreRegex = Parsed.Monitors.DangerousDestinations.IgnoreRegex
+	Loaded.Monitors.DangerousDestinations.PrefixList = parsed.Monitors.DangerousDestinations.PrefixList
+	Loaded.Monitors.DangerousDestinations.MatchRegex = parsed.Monitors.DangerousDestinations.MatchRegex
+	Loaded.Monitors.DangerousDestinations.IgnoreRegex = parsed.Monitors.DangerousDestinations.IgnoreRegex
 
-	Loaded.Monitors.ExpectedDestinations.Enabled = Parsed.Monitors.ExpectedDestinations.Enabled
-	executeInterval, err = time.ParseDuration(Parsed.Monitors.ExpectedDestinations.ExecuteInterval)
+	Loaded.Monitors.ExpectedDestinations.Enabled = parsed.Monitors.ExpectedDestinations.Enabled
+	executeInterval, err = time.ParseDuration(parsed.Monitors.ExpectedDestinations.ExecuteInterval)
 	if err != nil {
 		return fmt.Errorf("error parsing duration for \"execute_interval\" in \"monitors/expected_destinations\"")
 	}
 	Loaded.Monitors.ExpectedDestinations.ExecuteInterval = executeInterval
-	Loaded.Monitors.ExpectedDestinations.HitThreshold = Parsed.Monitors.ExpectedDestinations.HitThreshold
-	Loaded.Monitors.ExpectedDestinations.MinimumNumberLength = Parsed.Monitors.ExpectedDestinations.MinimumNumberLength
-	Loaded.Monitors.ExpectedDestinations.ActionChainName = Parsed.Monitors.ExpectedDestinations.ActionChainName
-	Loaded.Monitors.ExpectedDestinations.ActionChainHoldoffPeriod = Parsed.Monitors.ExpectedDestinations.ActionChainHoldoffPeriod
-	Loaded.Monitors.ExpectedDestinations.MaxActionChainRunCount = Parsed.Monitors.ExpectedDestinations.MaxActionChainRunCount
-	if considerFromLast, err := time.ParseDuration(Parsed.Monitors.ExpectedDestinations.ConsiderCDRsFromLast); err != nil {
-		considerFromLastUInt, err := strconv.Atoi(Parsed.Monitors.ExpectedDestinations.ConsiderCDRsFromLast)
+	Loaded.Monitors.ExpectedDestinations.HitThreshold = parsed.Monitors.ExpectedDestinations.HitThreshold
+	Loaded.Monitors.ExpectedDestinations.MinimumNumberLength = parsed.Monitors.ExpectedDestinations.MinimumNumberLength
+	Loaded.Monitors.ExpectedDestinations.ActionChainName = parsed.Monitors.ExpectedDestinations.ActionChainName
+	Loaded.Monitors.ExpectedDestinations.ActionChainHoldoffPeriod = parsed.Monitors.ExpectedDestinations.ActionChainHoldoffPeriod
+	Loaded.Monitors.ExpectedDestinations.MaxActionChainRunCount = parsed.Monitors.ExpectedDestinations.MaxActionChainRunCount
+	if considerFromLast, err := time.ParseDuration(parsed.Monitors.ExpectedDestinations.ConsiderCDRsFromLast); err != nil {
+		considerFromLastUInt, err := strconv.Atoi(parsed.Monitors.ExpectedDestinations.ConsiderCDRsFromLast)
 		if err != nil {
 			return fmt.Errorf("error converting value of \"consider_cdrs_from_last\" to int as a fallback from parseable time.Duration in \"monitors/expected_destinations\"")
 		}
@@ -101,23 +181,23 @@ func Load() error {
 	} else {
 		Loaded.Monitors.ExpectedDestinations.ConsiderCDRsFromLast = considerFromLast
 	}
-	Loaded.Monitors.ExpectedDestinations.PrefixList = Parsed.Monitors.ExpectedDestinations.PrefixList
-	Loaded.Monitors.ExpectedDestinations.MatchRegex = Parsed.Monitors.ExpectedDestinations.MatchRegex
-	Loaded.Monitors.ExpectedDestinations.IgnoreRegex = Parsed.Monitors.ExpectedDestinations.IgnoreRegex
+	Loaded.Monitors.ExpectedDestinations.PrefixList = parsed.Monitors.ExpectedDestinations.PrefixList
+	Loaded.Monitors.ExpectedDestinations.MatchRegex = parsed.Monitors.ExpectedDestinations.MatchRegex
+	Loaded.Monitors.ExpectedDestinations.IgnoreRegex = parsed.Monitors.ExpectedDestinations.IgnoreRegex
 
-	Loaded.Monitors.SmallDurationCalls.Enabled = Parsed.Monitors.SmallDurationCalls.Enabled
-	executeInterval, err = time.ParseDuration(Parsed.Monitors.SmallDurationCalls.ExecuteInterval)
+	Loaded.Monitors.SmallDurationCalls.Enabled = parsed.Monitors.SmallDurationCalls.Enabled
+	executeInterval, err = time.ParseDuration(parsed.Monitors.SmallDurationCalls.ExecuteInterval)
 	if err != nil {
 		return fmt.Errorf("error parsing duration for \"execute_interval\" in \"monitors/small_duration_calls\"")
 	}
 	Loaded.Monitors.SmallDurationCalls.ExecuteInterval = executeInterval
-	Loaded.Monitors.SmallDurationCalls.HitThreshold = Parsed.Monitors.SmallDurationCalls.HitThreshold
-	Loaded.Monitors.SmallDurationCalls.MinimumNumberLength = Parsed.Monitors.SmallDurationCalls.MinimumNumberLength
-	Loaded.Monitors.SmallDurationCalls.ActionChainName = Parsed.Monitors.SmallDurationCalls.ActionChainName
-	Loaded.Monitors.SmallDurationCalls.ActionChainHoldoffPeriod = Parsed.Monitors.SmallDurationCalls.ActionChainHoldoffPeriod
-	Loaded.Monitors.SmallDurationCalls.MaxActionChainRunCount = Parsed.Monitors.SmallDurationCalls.MaxActionChainRunCount
-	if considerFromLast, err := time.ParseDuration(Parsed.Monitors.SmallDurationCalls.ConsiderCDRsFromLast); err != nil {
-		considerFromLastUInt, err := strconv.Atoi(Parsed.Monitors.SmallDurationCalls.ConsiderCDRsFromLast)
+	Loaded.Monitors.SmallDurationCalls.HitThreshold = parsed.Monitors.SmallDurationCalls.HitThreshold
+	Loaded.Monitors.SmallDurationCalls.MinimumNumberLength = parsed.Monitors.SmallDurationCalls.MinimumNumberLength
+	Loaded.Monitors.SmallDurationCalls.ActionChainName = parsed.Monitors.SmallDurationCalls.ActionChainName
+	Loaded.Monitors.SmallDurationCalls.ActionChainHoldoffPeriod = parsed.Monitors.SmallDurationCalls.ActionChainHoldoffPeriod
+	Loaded.Monitors.SmallDurationCalls.MaxActionChainRunCount = parsed.Monitors.SmallDurationCalls.MaxActionChainRunCount
+	if considerFromLast, err := time.ParseDuration(parsed.Monitors.SmallDurationCalls.ConsiderCDRsFromLast); err != nil {
+		considerFromLastUInt, err := strconv.Atoi(parsed.Monitors.SmallDurationCalls.ConsiderCDRsFromLast)
 		if err != nil {
 			return fmt.Errorf("error converting value of \"consider_cdrs_from_last\" to int as a fallback from parseable time.Duration in \"monitors/small_duration_calls\"")
 		}
@@ -129,44 +209,44 @@ func Load() error {
 	} else {
 		Loaded.Monitors.SmallDurationCalls.ConsiderCDRsFromLast = considerFromLast
 	}
-	durationThreshold, err := time.ParseDuration(Parsed.Monitors.SmallDurationCalls.DurationThreshold)
+	durationThreshold, err := time.ParseDuration(parsed.Monitors.SmallDurationCalls.DurationThreshold)
 	if err != nil {
 		return fmt.Errorf("error parsing duration for \"duration_threshold\" in \"monitors/small_duration_calls\"")
 	}
 	Loaded.Monitors.SmallDurationCalls.DurationThreshold = durationThreshold
 
 	// Actions
-	fmt.Println(Parsed.Actions.Email)
-	fmt.Println(*Parsed.Actions.Email)
-	if Parsed.Actions.Email != nil {
+	// fmt.Println(parsed.Actions.Email)
+	// fmt.Println(*parsed.Actions.Email)
+	if parsed.Actions.Email != nil {
 		Loaded.Actions.Email = new(actionEmail)
-		Loaded.Actions.Email.Enabled = Parsed.Actions.Email.Enabled
-		Loaded.Actions.Email.Username = Parsed.Actions.Email.Username
-		Loaded.Actions.Email.Password = Parsed.Actions.Email.Password
-		Loaded.Actions.Email.Message = Parsed.Actions.Email.Message
+		Loaded.Actions.Email.Enabled = parsed.Actions.Email.Enabled
+		Loaded.Actions.Email.Username = parsed.Actions.Email.Username
+		Loaded.Actions.Email.Password = parsed.Actions.Email.Password
+		Loaded.Actions.Email.Message = parsed.Actions.Email.Message
 	}
-	if Parsed.Actions.Call != nil {
+	if parsed.Actions.Call != nil {
 		Loaded.Actions.Call = new(actionCall)
-		Loaded.Actions.Call.Enabled = Parsed.Actions.Call.Enabled
+		Loaded.Actions.Call.Enabled = parsed.Actions.Call.Enabled
 	}
-	if Parsed.Actions.HTTP != nil {
+	if parsed.Actions.HTTP != nil {
 		Loaded.Actions.HTTP = new(actionHTTP)
-		Loaded.Actions.HTTP.Enabled = Parsed.Actions.HTTP.Enabled
+		Loaded.Actions.HTTP.Enabled = parsed.Actions.HTTP.Enabled
 	}
-	if Parsed.Actions.LocalCommands != nil {
+	if parsed.Actions.LocalCommands != nil {
 		Loaded.Actions.LocalCommands = new(actionLocalCommands)
-		Loaded.Actions.LocalCommands.Enabled = Parsed.Actions.LocalCommands.Enabled
+		Loaded.Actions.LocalCommands.Enabled = parsed.Actions.LocalCommands.Enabled
 	}
 
 	// Action Chains
 	Loaded.ActionChains = make(map[string][]actionChainAction)
-	for k, v := range *Parsed.ActionChains {
+	for k, v := range *parsed.ActionChains {
 		Loaded.ActionChains[k] = v
 	}
 
 	// Data Groups
 	Loaded.DataGroups = make(map[string]dataGroup)
-	for k, v := range *Parsed.DataGroups {
+	for k, v := range *parsed.DataGroups {
 		Loaded.DataGroups[k] = v
 	}
 
@@ -175,9 +255,11 @@ func Load() error {
 }
 
 type loadedValues struct {
-	General      general
-	Softswitch   softswitch
-	CDRsSources  cdrsSources
+	General general
+	//Softswitch   softswitch.Softswitch
+	Softswitch softswitchInfo
+	//CDRsSources  map[string]softswitch.CDRsSource
+	CDRsSources  map[string]map[string]string
 	Monitors     monitors
 	Actions      actions
 	ActionChains actionChains
@@ -186,7 +268,7 @@ type loadedValues struct {
 
 type general struct{}
 
-type softswitch struct {
+type softswitchInfo struct {
 	Brand      string
 	Version    string
 	CDRsSource string

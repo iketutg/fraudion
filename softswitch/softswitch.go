@@ -1,6 +1,8 @@
 package softswitch
 
 import (
+	"fmt"
+
 	"database/sql"
 )
 
@@ -14,7 +16,13 @@ type Softswitch interface {
 
 // Asterisk ...
 type Asterisk struct {
+	Version    string
 	CDRsSource CDRsSource
+}
+
+// GetCDRsSource ...
+func (asterisk *Asterisk) GetCDRsSource() CDRsSource {
+	return asterisk.CDRsSource
 }
 
 // CDRsSource ...
@@ -22,38 +30,24 @@ type CDRsSource interface{}
 
 // CDRsSourceDatabase ...
 type CDRsSourceDatabase struct {
-	Connection *sql.DB
-	TableName  string
+	UserName     string
+	UserPassword string
+	DatabaseName string
+	TableName    string
+	MysqlOptions string
+	connection   *sql.DB
 }
 
-// Init ...
-func Init() error {
+// Connect ...
+func (cdrSource *CDRsSourceDatabase) Connect() error {
 
-	// TODO: This will require config to be parsed, validated and loaded
-
-	// TODO: Check what Softswitch type it is
-
-	// TODO: Check what CDRs Source it is
-
-	dbConnections, err := sql.Open("mysql", "root:@tcp(localhost:3306)/asteriskcdrdb?allowOldPasswords=1")
+	connections, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(localhost:3306)/%s?allowOldPasswords=1", cdrSource.UserName, cdrSource.UserPassword, cdrSource.DatabaseName))
 	if err != nil {
-
+		return fmt.Errorf("Could not create Database connections")
 	}
 
-	sourceDatabase := new(CDRsSourceDatabase)
-	sourceDatabase.Connection = dbConnections
-	sourceDatabase.TableName = "cdr"
-
-	newMonitored := new(Asterisk)
-	newMonitored.CDRsSource = sourceDatabase
-
-	Monitored = newMonitored
+	cdrSource.connection = connections
 
 	return nil
 
-}
-
-// GetCDRsSource ...
-func (asterisk *Asterisk) GetCDRsSource() CDRsSource {
-	return asterisk.CDRsSource
 }

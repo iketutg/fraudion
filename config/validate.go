@@ -1,17 +1,17 @@
 package config
 
 import (
-	"fmt"
-	//"github.com/andmar/fraudion/utils"
+//"fmt"
+//"github.com/andmar/fraudion/utils"
 )
 
 // Validated ...
 var Validated bool
 
 // Validate ...
-func Validate() []error {
+func validate() (bool, []error) {
 
-	var errors []error
+	//var errors []error
 
 	// General
 
@@ -176,13 +176,13 @@ func Validate() []error {
 
 	*/
 
-	fmt.Printf("Errors:\n%s\n", errors)
+	//fmt.Printf("Errors:\n%s\n", errors)
 
-	if len(errors) != 0 {
-		return errors
-	}
+	// if len(errors) != 0 {
+	// 	return true, errors
+	// }
 
-	return nil
+	return false, nil
 
 	// Actions
 	/*
