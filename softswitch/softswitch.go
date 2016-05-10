@@ -6,6 +6,13 @@ import (
 	"database/sql"
 )
 
+const (
+	// SystemAsterisk ...
+	SystemAsterisk = "*asterisk"
+	// CDRSourceDatabase ...
+	CDRSourceDatabase = "*database"
+)
+
 // Monitored ...
 var Monitored Softswitch
 
@@ -26,16 +33,23 @@ func (asterisk *Asterisk) GetCDRsSource() CDRsSource {
 }
 
 // CDRsSource ...
-type CDRsSource interface{}
+type CDRsSource interface {
+	GetCDRs()
+}
 
 // CDRsSourceDatabase ...
 type CDRsSourceDatabase struct {
+	Type         string
+	DBMS         string
 	UserName     string
 	UserPassword string
 	DatabaseName string
 	TableName    string
-	MysqlOptions string
-	connection   *sql.DB
+	connections  *sql.DB
+}
+
+// GetCDRs ...
+func (cdrSource *CDRsSourceDatabase) GetCDRs() {
 }
 
 // Connect ...
@@ -46,8 +60,15 @@ func (cdrSource *CDRsSourceDatabase) Connect() error {
 		return fmt.Errorf("Could not create Database connections")
 	}
 
-	cdrSource.connection = connections
+	cdrSource.connections = connections
 
 	return nil
+
+}
+
+// GetConnections ...
+func (cdrSource *CDRsSourceDatabase) GetConnections() *sql.DB {
+
+	return cdrSource.connections
 
 }

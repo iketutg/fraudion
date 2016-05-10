@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"time"
-
-	"github.com/andmar/fraudion/softswitch"
 )
 
 const (
@@ -22,12 +20,13 @@ var Loaded *loadedValues
 
 // Load SetsUp the loading of the configuration from specified file and handle outputs, keeps config.Loaded nil in case of some error happen
 func Load(configDir string, configFileName string, validateOnly bool) error {
+
 	if err := doLoad(configDir, configFileName, validateOnly); err != nil {
 		Loaded = nil
 		return err
-	} else {
-		return nil
 	}
+
+	return nil
 
 }
 
@@ -46,75 +45,13 @@ func doLoad(configDir string, configFileName string, validateOnly bool) error {
 
 	// General Section
 
+	// Softswitch Section
+	Loaded.Softswitch.System = parsed.Softswitch.System
+	Loaded.Softswitch.Version = parsed.Softswitch.Version
+	Loaded.Softswitch.CDRsSource = parsed.Softswitch.CDRsSource
+
 	// CDRs Sources
 	Loaded.CDRsSources = *parsed.CDRsSources
-	sources := make(map[string]softswitch.CDRsSource)
-	for k, v := range Loaded.CDRsSources {
-
-		switch k {
-		case "*db_mysql":
-
-			source := new(softswitch.CDRsSourceDatabase)
-			source.UserName = v["user_name"]
-			source.UserPassword = v["user_password"]
-			source.DatabaseName = v["database_name"]
-			source.TableName = v["table_name"]
-			//source.MysqlOptions = v["mysql_options"] // TODO: This was removed because what this is used for is not MySQL options, is related to the Library used to connect to it
-
-			sources[k] = source
-
-		default:
-			return fmt.Errorf("Unknown CDR Source key value")
-		}
-	}
-
-	// fmt.Println(Loaded.CDRsSources)
-	// fmt.Println(sources)
-	// fmt.Println(sources["*db_mysql"])
-
-	// Softswitch Section
-	loadedSSInfo := *parsed.Softswitch
-	Loaded.Softswitch.Brand = loadedSSInfo.Brand
-	Loaded.Softswitch.Version = loadedSSInfo.Version
-	Loaded.Softswitch.CDRsSource = loadedSSInfo.CDRsSource
-
-	var ss *softswitch.Asterisk
-	switch parsed.Softswitch.Brand {
-
-	case "*asterisk":
-
-		ss = new(softswitch.Asterisk)
-		ss.Version = parsed.Softswitch.Version
-		loadedSource, found := sources[parsed.Softswitch.CDRsSource]
-		if found == false {
-			return fmt.Errorf("Could not find CDR Source in Loaded sources list")
-		}
-
-		switch parsed.Softswitch.CDRsSource {
-		case "*db_mysql":
-
-			loadedSourceConverted, ok := loadedSource.(softswitch.CDRsSourceDatabase) // TODO: Don't understand, yet, why this returns false when it should return true?  Is it because the value is of the correct type already?
-			if ok == true {
-				return fmt.Errorf("Something strange happened")
-			}
-
-			err := loadedSourceConverted.Connect()
-			if err != nil {
-				return err
-			}
-
-		default:
-			return fmt.Errorf("Unknown CDR Source key value")
-		}
-
-		ss.CDRsSource = loadedSource
-
-	default:
-		return fmt.Errorf("Unknown Softswitch Brand value")
-
-	}
-
-	softswitch.Monitored = ss
 
 	// Monitors
 	Loaded.Monitors.SimultaneousCalls.Enabled = parsed.Monitors.SimultaneousCalls.Enabled
@@ -255,11 +192,9 @@ func doLoad(configDir string, configFileName string, validateOnly bool) error {
 }
 
 type loadedValues struct {
-	General general
-	//Softswitch   softswitch.Softswitch
-	Softswitch softswitchInfo
-	//CDRsSources  map[string]softswitch.CDRsSource
-	CDRsSources  map[string]map[string]string
+	General      general
+	Softswitch   softswitchInfo
+	CDRsSources  cdrsSources
 	Monitors     monitors
 	Actions      actions
 	ActionChains actionChains
@@ -269,7 +204,7 @@ type loadedValues struct {
 type general struct{}
 
 type softswitchInfo struct {
-	Brand      string
+	System     string
 	Version    string
 	CDRsSource string
 }

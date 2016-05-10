@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/andmar/fraudion/config"
+	"github.com/andmar/fraudion/monitors"
 	"github.com/andmar/fraudion/softswitch"
 	"github.com/andmar/fraudion/state"
 
@@ -24,7 +25,6 @@ const (
 	constDefaultConfigFilename = "fraudion.json"
 	constDefaultLogDir         = "."
 	constDefaultLogFile        = "fraudion.log" // TODO: Should we keep the system defaulting to STDOUT or use this value?
-
 )
 
 var (
@@ -32,14 +32,11 @@ var (
 	argCLILogFilename    = flag.String("logfile", constDefaultLogFile, "<help message for 'logfile'>")
 	argCLIConfigIn       = flag.String("cfgin", constDefaultConfigDir, "<help message for 'cfgin'>")
 	argCLIConfigFilename = flag.String("cfgfile", constDefaultConfigFilename, "<help message for 'cfgfile'>")
-
-	// TODO: This is temporary only, this information will always come from the config file
-	argCLIDBPass = flag.String("dbpass", "", "<help message for 'dbpass'>")
 )
 
 func main() {
 
-	// Logger Setup
+	// * Logger Setup
 	log := marlog.MarLog
 	log.Prefix = "FRAUDION"
 	log.Flags = marlog.FlagLdate | marlog.FlagLtime | marlog.FlagLlongfile
@@ -83,6 +80,38 @@ func main() {
 		log.LogO("ERROR", err.Error(), marlog.OptionFatal) // TODO: This has to be changed becase config.Validate() returns an array/slice of errors
 	}
 
+	// * Monitored Softswitch Setup
+	switch config.Loaded.Softswitch.System {
+	case softswitch.SystemAsterisk:
+
+		inUseSoftswitch := new(softswitch.Asterisk)
+		inUseSoftswitch.Version = config.Loaded.Softswitch.Version
+
+		sourceInfo, found := config.Loaded.CDRsSources[config.Loaded.Softswitch.CDRsSource]
+		if found == false {
+			log.LogO("ERROR", "Could not find CDR Source in Loaded sources list", marlog.OptionFatal)
+		}
+
+		newSource := new(softswitch.CDRsSourceDatabase)
+		newSource.Type = sourceInfo["type"]
+		newSource.DBMS = sourceInfo["dbms"]
+		newSource.UserName = sourceInfo["user_name"]
+		newSource.UserPassword = sourceInfo["user_password"]
+		newSource.DatabaseName = sourceInfo["database_name"]
+		newSource.TableName = sourceInfo["table_name"]
+
+		if err := newSource.Connect(); err != nil {
+			log.LogO("ERROR", "Could not connect to the Database on setup", marlog.OptionFatal)
+		}
+
+		inUseSoftswitch.CDRsSource = *newSource
+
+		softswitch.Monitored = inUseSoftswitch
+
+	default:
+		log.LogO("ERROR", "Unknown Softswitch Brand value", marlog.OptionFatal)
+	}
+
 	fmt.Println("\nLoaded Configurations:")
 	fmt.Println(config.Loaded.General)
 	fmt.Println(config.Loaded.Softswitch)
@@ -93,13 +122,22 @@ func main() {
 	fmt.Println(config.Loaded.DataGroups)
 	fmt.Println()
 
+	fmt.Println("Loaded CDRs Sources:")
+	fmt.Println(config.Loaded.CDRsSources)
+	fmt.Println()
+
 	fmt.Println("Softswitch:")
 	fmt.Println(softswitch.Monitored)
 	fmt.Println()
 
-	fmt.Println("CDRs Sources:")
-	fmt.Println(config.Loaded.CDRsSources)
+	fmt.Println("CDRs Source:")
+	fmt.Println(softswitch.Monitored.GetCDRsSource())
 	fmt.Println()
+
+	// * Start monitors
+	if config.Loaded.Monitors.DangerousDestinations.Enabled == true {
+		go monitors.DangerousDestinationsRun()
+	}
 
 	log.LogS("INFO", "All Ok. Main thread is going to sleep now...")
 

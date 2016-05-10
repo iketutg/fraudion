@@ -49,7 +49,7 @@ type parsedValues struct {
 type generalJSON struct{}
 
 type softswitchJSON struct {
-	Brand      string
+	System     string
 	Version    string
 	CDRsSource string `json:"cdrs_source"`
 }
