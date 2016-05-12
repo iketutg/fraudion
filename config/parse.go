@@ -103,7 +103,8 @@ type actionsJSON struct {
 	LocalCommands *actionLocalCommandsJSON `json:"*local_commands"`
 }
 type actionBaseJSON struct {
-	Enabled bool
+	Enabled   bool
+	Recurrent bool
 }
 type actionEmailJSON struct {
 	actionBaseJSON
@@ -124,7 +125,7 @@ type actionLocalCommandsJSON struct {
 type actionChains map[string][]actionChainAction
 
 type actionChainAction struct {
-	ActionName     string   `json:"actionChains"`
+	ActionName     string   `json:"action"`
 	DataGroupNames []string `json:"data_groups"`
 }
 

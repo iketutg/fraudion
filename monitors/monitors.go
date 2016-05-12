@@ -1,14 +1,46 @@
 package monitors
 
-// TODO: This will hold the Monitors interface type, if needed!
+import (
+	"time"
+
+	"github.com/andmar/fraudion/config"
+	"github.com/andmar/fraudion/softswitches"
+)
+
+const (
+	// RunModeNormal ...
+	RunModeNormal = iota
+	// RunModeInWarning ...
+	RunModeInWarning
+	// RunModeInAlarm ...
+	RunModeInAlarm
+)
 
 // Monitor ...
 type Monitor interface {
 	Run()
 }
 
-// DangerousDestinations ...
-type DangerousDestinations struct{}
+// monitorBase ...
+type monitorBase struct {
+	Softswitch softswitches.Softswitch
+}
 
-// Run ...
-func (monitor *DangerousDestinations) Run() {}
+// DangerousDestinations ...
+type DangerousDestinations struct {
+	monitorBase
+	Config *config.MonitorDangerousDestinations
+	//Config ConfigDangerousDestinations // TODO: This will have the loaded configurations, launcher.go will fill it
+	State StateDangerousDestinations
+}
+
+type stateBase struct {
+	LastActionChainRunTime time.Time
+	ActionChainRunCount    uint32
+	RunMode                int
+}
+
+// StateDangerousDestinations ...
+type StateDangerousDestinations struct {
+	stateBase
+}

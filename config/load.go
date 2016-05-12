@@ -211,10 +211,10 @@ type softswitchInfo struct {
 
 // Monitors ...
 type monitors struct {
-	SimultaneousCalls     monitorSimultaneousCalls
-	DangerousDestinations monitorDangerousDestinations
-	ExpectedDestinations  monitorExpectedDestinations
-	SmallDurationCalls    monitorSmallCallDurations
+	SimultaneousCalls     MonitorSimultaneousCalls
+	DangerousDestinations MonitorDangerousDestinations
+	ExpectedDestinations  MonitorExpectedDestinations
+	SmallDurationCalls    MonitorSmallCallDurations
 }
 
 type monitorBase struct {
@@ -227,19 +227,11 @@ type monitorBase struct {
 	MaxActionChainRunCount   uint32
 }
 
-type monitorSimultaneousCalls struct {
+type MonitorSimultaneousCalls struct {
 	monitorBase
 }
 
-type monitorDangerousDestinations struct {
-	monitorBase
-	ConsiderCDRsFromLast time.Duration
-	PrefixList           []string
-	MatchRegex           string
-	IgnoreRegex          string
-}
-
-type monitorExpectedDestinations struct {
+type MonitorDangerousDestinations struct {
 	monitorBase
 	ConsiderCDRsFromLast time.Duration
 	PrefixList           []string
@@ -247,7 +239,15 @@ type monitorExpectedDestinations struct {
 	IgnoreRegex          string
 }
 
-type monitorSmallCallDurations struct {
+type MonitorExpectedDestinations struct {
+	monitorBase
+	ConsiderCDRsFromLast time.Duration
+	PrefixList           []string
+	MatchRegex           string
+	IgnoreRegex          string
+}
+
+type MonitorSmallCallDurations struct {
 	monitorBase
 	ConsiderCDRsFromLast time.Duration
 	DurationThreshold    time.Duration
@@ -260,19 +260,24 @@ type actions struct {
 	LocalCommands *actionLocalCommands
 }
 
+type actionBase struct {
+	Enabled   bool
+	Recurrent bool
+}
+
 type actionEmail struct {
-	Enabled  bool
+	actionBase
 	Username string
 	Password string
 	Message  string
 }
 
 type actionCall struct {
-	Enabled bool
+	actionBase
 }
 
 type actionHTTP struct {
-	Enabled bool
+	actionBase
 }
 
 type actionLocalCommands struct {
