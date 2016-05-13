@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -44,6 +45,11 @@ func main() {
 	log.SetStamp("DEBUG", "*STDOUT")
 	log.SetStamp("INFO", "*STDOUT")
 
+	// TODO: Remove this? This was just used for testing!
+	log.SetStamp("VERBOSE", "*STDOUT")
+	log.DeactivateStamps("VERBOSE")
+	log.LogS("VERBOSE", "Test Verbose!")
+
 	system.State.StartUpTime = time.Now()
 
 	// TODO: Error handling here?
@@ -81,6 +87,14 @@ func main() {
 
 	// TODO: Debug: Remove this?
 	// fmt.Println("Log:", log)
+
+	if err := config.Parse2(*argCLIConfigIn, *argCLIConfigFilename); err != nil {
+		log.LogO("ERROR", "Can't proceed. :( There was an Error ("+err.Error()+")", marlog.OptionFatal) // TODO: This has to be changed becase config.Validate() returns an array/slice of errors
+	}
+
+	fmt.Println(config.Parsed2)
+
+	os.Exit(-1)
 
 	if err := config.Load(*argCLIConfigIn, *argCLIConfigFilename, false); err != nil {
 		log.LogO("ERROR", "Can't proceed. :( There was an Error ("+err.Error()+")", marlog.OptionFatal) // TODO: This has to be changed becase config.Validate() returns an array/slice of errors
