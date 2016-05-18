@@ -1,301 +1,200 @@
 package config
 
 import (
-//"fmt"
-//"github.com/andmar/fraudion/utils"
+	"fmt"
+	"reflect"
+	"regexp"
+	"strconv"
+	"time"
+
+	v "github.com/gima/govalid/v1"
 )
 
 // Validated ...
-var Validated bool
+var validated bool
 
 // Validate ...
-func validate() (bool, []error) {
+func validate() error {
 
-	//var errors []error
+	validatorParseableDuration := func(data interface{}) (path string, err error) {
 
-	// General
+		path = "validatorParseableDuration"
 
-	// Softswitch
-	/*
-		"softswitch": {
-			"brand": "*asterisk",
-			"version": "1.8",
-			"cdrs_source": "*db_mysql",
-		},
-		name: softswitch, mandatory
-		values: bellow...", everything else is ignored in parsing
-
-		brand: string, mandatory, one of *asterisk, *softswitch (FUTURE)
-		version: string, optional, any string, validated on Parsing
-		cdrs_source: string, mandatory, one of *db_mysql, *csv (FUTURE)
-	*/
-	/*fmt.Printf("\n\n\n\n\n\n\n")
-	fmt.Println(Parsed.Softswitch)
-	fmt.Println(Parsed.CDRsSources)
-	if Parsed.Softswitch.Brand == "" && Parsed.Softswitch.CDRsSource == "" {
-		errors = append(errors, fmt.Errorf("\"softswitch\" section not found OR all of it's values are empty"))
-	} else {
-		if Parsed.Softswitch.Brand == "" {
-			errors = append(errors, fmt.Errorf("\"brand\" value in \"softswitch\" section is blank"))
-		} else {
-			if utils.StringInStringsSlice(Parsed.Softswitch.Brand, []string{"*asterisk", "*freeswitch"}) == false {
-				errors = append(errors, fmt.Errorf("\"brand\" value in \"softswitch\" section must be one of: *asterisk, *freeswitch"))
-			}
+		validate, ok := data.(string)
+		if !ok {
+			return path, fmt.Errorf("expected string, got %v", reflect.TypeOf(data))
 		}
-		if Parsed.Softswitch.CDRsSource == "" {
-			errors = append(errors, fmt.Errorf("\"cdrs_source\" value in \"softswitch\" section is blank"))
-		} else {
-			if utils.StringInStringsSlice(Parsed.Softswitch.CDRsSource, []string{"*db_mysql"}) == false {
-				errors = append(errors, fmt.Errorf("\"cdrs_sources\" value in \"softswitch\" section must be one of: *db_mysql"))
-			} else {
-				if _, found := *Parsed.CDRsSources[Parsed.Softswitch.CDRsSource]; found == false {
-					errors = append(errors, fmt.Errorf("\"cdrs_sources\" value in \"softswitch\" not configured in \"cdrs_sources\""))
-				}
-			}
+
+		if _, err := time.ParseDuration(validate); err != nil {
+			return path, fmt.Errorf("expected parseable time.Duration, got %s which isn't", validate)
 		}
+
+		return "", nil
+
 	}
 
-	// CDRs Sources
-	fmt.Printf("\n\n")
-	fmt.Println(Parsed.CDRsSources)
-	for key, cdrSource := range *Parsed.CDRsSources {
-		if utils.StringInStringsSlice(key, []string{"*db_mysql"}) {
-			errors = append(errors, fmt.Errorf("CDR Source type \"%s\" unknown in \"cdrs_sources\" section", key))
-		} else {
-			if cdrSource["user_name"] == "" && cdrSource["user_password"] == "" && cdrSource["database_name"] == "" && cdrSource["table_name"] == "" {
-				errors = append(errors, fmt.Errorf("\"cdrs_sources\" section not found OR all of it's values are empty"))
-			} else {
-				if cdrSource["user_name"] == "" || cdrSource["user_password"] == "" || cdrSource["database_name"] == "" || cdrSource["table_name"] == "" {
-					errors = append(errors, fmt.Errorf("Each source in \"cdrs_sources\" must have username, user_password, database_name, table_name set"))
-				}
+	validatorParseableDurationOrInt := func(data interface{}) (path string, err error) {
+
+		path = "validatorCompilableRegex"
+
+		validate, ok := data.(string)
+		if !ok {
+			return path, fmt.Errorf("expected string, got %v", reflect.TypeOf(data))
+		}
+
+		_, errNotDuration := time.ParseDuration(validate)
+		integerValue, errNotInt := strconv.Atoi(validate)
+
+		if errNotDuration != nil && errNotInt != nil {
+			return path, fmt.Errorf("expected parseable time.Duration OR string convertible to int, got %s which isn't", validate)
+		}
+
+		if errNotDuration != nil && errNotInt == nil {
+			if integerValue <= 0 {
+				return path, fmt.Errorf("expected > 0 int, got %s", validate)
 			}
 		}
-	}*/
 
-	/*
-		   "*db_mysql": {
-		   	"user_name": "",
-		   	"user_password": "",
-		   	"database_name": "asteriskcdrdb",
-		   	"table_name": "cdr",
-		   	"mysql_options": "allowOldPasswords=1"
-		   }
-			 name: cdrs_sources, mandatory if the following monitors are enabled: *dangerous_destinations, *expected_destinations, *small_duration_calls
-			 values: one of *db_mysql, *csv (FUTURE), everything else is ignored on parsing
+		return "", nil
 
-			 *db_mysql
-		   user_name: string, mandatory
-		   user_password: mandatory
-		   database_name: mandatory
-		   table_name: mandatory
-		   mysql_options: optional
-	*/
+	}
 
-	// Monitors
-	/*
-		   	"monitors": {
-		       "*simultaneous_calls": {
-		         "enabled": true,
-		         "execute_interval": "5m",
-		         "hit_threshold": 5,
-		         "minimum_number_length": 5,
-		         "action_chain_name": "*default",
-		   			"action_chain_holdoff_period": 0,
-		   			"action_chain_run_count": 0,
-		       },
+	validatorCompilableRegex := func(data interface{}) (path string, err error) {
 
-		       "*dangerous_destinations": {
-		         "enabled": true,
-		         "execute_interval": "1m",
-		         "hit_threshold": 5,
-		         "minimum_number_length": 5,
-		         "action_chain_name": "*default",
-		   			"action_chain_holdoff_period": 0,
-		   			"action_chain_run_count": 0,
-		   			"consider_cdrs_from_last": "5",
-		         "prefix_list": ["351", "244", "91", "53", "256", "48"],
-		         "match_regex": "([0-9]{0,8})?(0{2})?__prefix__[0-9]{5,}",
-		         "ignore_regex": "^[0-9]{9}$"
-		   		},
+		path = "validatorCompilableRegex"
 
-		       "*expected_destinations": {
-		         "enabled": true,
-		         "execute_interval": "5m",
-		         "hit_threshold": 5,
-		         "minimum_number_length": 10,
-		         "action_chain_name": "*default",
-		   			"action_chain_holdoff_period": 0,
-		   			"action_chain_run_count": 0,
-		   			"consider_cdrs_from_last": "5d",
-		         "prefix_list": ["244"],
-		         "match_regex": "([0-9]{0,8})?(0{2})?__prefix__[0-9]{5,}",
-		         "ignore_regex": "^[0-9]{9}$"
-		       },
+		validate, ok := data.(string)
+		if !ok {
+			return path, fmt.Errorf("expected string, got %v", reflect.TypeOf(data))
+		}
 
-		       "*small_duration_calls": {
-		         "enabled": true,
-		         "execute_interval": "5m",
-		         "hit_threshold": 5,
-		         "minimum_number_length": 5,
-		         "action_chain_name": "*default",
-		   			"action_chain_holdoff_period": 0,
-		   			"action_chain_run_count": 0,
-		   			"consider_cdrs_from_last": "5d",
-		         "duration_threshold": "5s"
-		       }
-		     },
-				 name: monitores
-				 values: one of *simultaneous_calls, *dangerous_destinations, *small_duration_calls, *expected_destinations, everything else is ignored in Parsing
+		if _, err := regexp.Compile(validate); err != nil {
+			return path, fmt.Errorf("expected compilable regex string, got %s which isn't", validate)
+		}
 
-				 "common":
-				 enabled: bool, mandatory
-				 execute_interval: string with parseable time.Duration e.g. "5m", optional (has default value of ?)
-				 hit_threshold: uint, optional (has default value of ?), > 0
-				 minimum_number_length: uint, optional (has default value of ?), > 0
-				 action_chain_name: string, optional (defaults to "*default"), string has to match one of the setup Action Chains
-				 action_chain_holdoff_period: TBS
-				 action_chain_run_count: uint, optional (has default value of ?), > 0
+		return "", nil
 
-				 *simultaneous_calls
+	}
 
-				 *dangerous_destinations
-				 consider_cdrs_from_last: string, optional, parseable duration or number of days e.g. "5", "5h"
-				 prefix_list: [string], mandatory e.g. ["351", "244", "91", "53", "256", "48"]
-				 match_regex: string/regex, mandatory e.g. "([0-9]{0,8})?(0{2})?__prefix__[0-9]{5,}" __prefix__ will be replaced by each item on prefix_list on checking
-				 ignore_regex: string/regex, mandatory e.g. "^[0-9]{9}$" TBS: __prefix__ will be replaced by each item on prefix_list on checking
+	schema := v.Object(
 
-				 *small_duration_calls
-				 consider_cdrs_from_last: string, optional, parseable duration or number of days e.g. "5", "5h"
-				 duration_threshold: string, optional, parseable duration e.g. "5s"
+		v.ObjKV("general", v.Optional(v.Object())),
 
-				 *expected_destinations
-				 consider_cdrs_from_last: string, optional, parseable duration or number of days e.g. "5", "5h"
-				 prefix_list: [string], mandatory e.g. ["351", "244", "91", "53", "256", "48"]
-				 match_regex: string/regex, mandatory e.g. "([0-9]{0,8})?(0{2})?__prefix__[0-9]{5,}" __prefix__ will be replaced by each item on prefix_list on checking
-				 ignore_regex: string/regex, mandatory e.g. "^[0-9]{9}$" TBS: __prefix__ will be replaced by each item on prefix_list on checking
+		v.ObjKV("softswitch", v.Object(
+			v.ObjKV("type", v.String()),
+			v.ObjKV("version", v.Optional(v.String())),
+			v.ObjKV("cdrs_source", v.Object(
+				v.ObjKV("type", v.String()),
+				v.ObjKV("name", v.String()),
+			)),
+		)),
 
-	*/
+		v.ObjKV("cdrs_sources", v.Object(
+			v.ObjKeys(v.String()),
+			v.ObjValues(v.Object(
+				v.ObjKV("type", v.String()),
+				v.ObjKV("dbms", v.String()),
+				v.ObjKV("user_name", v.String()),
+				v.ObjKV("user_password", v.String()),
+				v.ObjKV("database_name", v.String()),
+				v.ObjKV("table_name", v.String()),
+			)),
+		)),
 
-	//fmt.Printf("Errors:\n%s\n", errors)
+		v.ObjKV("monitors", v.Object(
+			v.ObjKV("simultaneous_calls", v.Object(
+				v.ObjKV("enabled", v.Boolean()),
+				v.ObjKV("execute_interval", v.Optional(v.Function(validatorParseableDuration))),
+				v.ObjKV("hit_threshold", v.Optional(v.Number(v.NumMin(1.0)))),
+				v.ObjKV("minimum_number_length", v.Optional(v.Number(v.NumMin(1.0)))),
+				v.ObjKV("action_chain_name", v.Optional(v.String())),
+			)),
 
-	// if len(errors) != 0 {
-	// 	return true, errors
-	// }
+			v.ObjKV("dangerous_destinations", v.Optional(v.Object(
+				v.ObjKV("enabled", v.Boolean()),
+				v.ObjKV("execute_interval", v.Optional(v.Function(validatorParseableDuration))),
+				v.ObjKV("hit_threshold", v.Optional(v.Number(v.NumMin(1.0)))),
+				v.ObjKV("minimum_number_length", v.Optional(v.Number(v.NumMin(1.0)))),
+				v.ObjKV("action_chain_name", v.Optional(v.String())),
 
-	return false, nil
+				v.ObjKV("consider_cdrs_from_last", v.Function(validatorParseableDurationOrInt)),
+				v.ObjKV("prefix_list", v.Array(v.ArrEach(v.String()))),
+				v.ObjKV("match_regex", v.Function(validatorCompilableRegex)),
+				v.ObjKV("ignore_regex", v.Function(validatorCompilableRegex)),
+			))),
 
-	// Actions
-	/*
-		   	"actions": {
+			v.ObjKV("expected_destinations", v.Optional(v.Object(
+				v.ObjKV("enabled", v.Boolean()),
+				v.ObjKV("execute_interval", v.Optional(v.Function(validatorParseableDuration))),
+				v.ObjKV("hit_threshold", v.Optional(v.Number(v.NumMin(1.0)))),
+				v.ObjKV("minimum_number_length", v.Optional(v.Number(v.NumMin(1.0)))),
+				v.ObjKV("action_chain_name", v.Optional(v.String())),
 
-		       "*email": {
-		         "enabled": true, // [Optional] If omitted this we consider it "disabled"
-		         "gmail_username": "username@domain",
-		         "gmail_password": "password",
-		         "message": "This is a message, we support some __tags__ that we replace with information."
-		       },
-		       "*http": {
-		         "enabled": true, // [Optional] If omitted we consider it "disabled"
-		       },
-		       "*call": {
-		         "enabled": true // [Optional] If omitted we consider it "disabled"
-		       },
-		       "*local_commands": { // You can define your own command actions by giving them a name and a string that will be executed on the system! "*local_command x N"
-		         "enabled": true // [Optional] If omitted we consider it "disabled"
-		       }
+				v.ObjKV("consider_cdrs_from_last", v.Function(validatorParseableDurationOrInt)),
+				v.ObjKV("prefix_list", v.Array(v.ArrEach(v.String()))),
+				v.ObjKV("match_regex", v.Function(validatorCompilableRegex)),
+				v.ObjKV("ignore_regex", v.Function(validatorCompilableRegex)),
+			))),
 
-		     },
-		   	name: actions
-		   	values: one of *email, *http, *local_comands, *call, everything else is ignored in Parsing
+			v.ObjKV("small_duration_calls", v.Optional(v.Object(
+				v.ObjKV("enabled", v.Boolean()),
+				v.ObjKV("execute_interval", v.Optional(v.Function(validatorParseableDuration))),
+				v.ObjKV("hit_threshold", v.Optional(v.Number(v.NumMin(1.0)))),
+				v.ObjKV("minimum_number_length", v.Optional(v.Number(v.NumMin(1.0)))),
+				v.ObjKV("action_chain_name", v.Optional(v.String())),
 
-		   	*email
-				enabled: bool, optional (has default value of false)
-				gmail_username: string, mandatory if enabled
-				gmail_password: string, mandatory if enabled
-				message: string, optional
+				v.ObjKV("consider_cdrs_from_last", v.Function(validatorParseableDurationOrInt)),
+				v.ObjKV("duration_threshold", v.Function(validatorParseableDuration))),
+			))),
+		),
 
-		   	*http
-				enabled: bool, optional (has default value of false)
+		v.ObjKV("actions", v.Optional(v.Object(
+			v.ObjKV("email", v.Optional(v.Object(
+				v.ObjKV("enabled", v.Boolean()),
+				v.ObjKV("recurrent", v.Optional(v.Boolean())),
+				v.ObjKV("gmail_username", v.String()),
+				v.ObjKV("gmail_password", v.String()),
+				v.ObjKV("title", v.Optional(v.String())),
+				v.ObjKV("body", v.Optional(v.String())),
+			))),
 
-		   	*call
-				enabled: bool, optional (has default value of false)
+			v.ObjKV("local_commands", v.Optional(v.Object(
+				v.ObjKV("enabled", v.Boolean()),
+				v.ObjKV("recurrent", v.Optional(v.Boolean())),
+			))),
+		))),
 
-		   	*local_comands
-				enabled: bool, optional (has default value of false)
+		v.ObjKV("action_chains", v.Optional(v.Object(
+			v.ObjKeys(v.String()),
+			v.ObjValues(v.Array(v.ArrEach(v.Object(
+				v.ObjKV("action", v.Or(v.String(v.StrIs("*email")), v.String(v.StrIs("*local_commands")))),
+				v.ObjKV("data_groups", v.Array(v.ArrEach(v.String()))),
+			)))),
+		))),
 
-	*/
+		v.ObjKV("data_groups", v.Optional(v.Object(
+			v.ObjKeys(v.String()),
+			v.ObjValues(v.Object(
+				v.ObjKV("phone_number", v.String()),  // TODO: Validate a Phone Number
+				v.ObjKV("email_address", v.String()), // TODO: Validate an e-mail Address
+				v.ObjKV("http_url", v.String()),      // TODO: Validate an URL
+				v.ObjKV("http_method", v.Or(v.String(v.StrIs("POST")), v.String(v.StrIs("GET")))),
+				v.ObjKV("http_parameters", v.Object(
+					v.ObjKeys(v.String()),
+					v.ObjValues(v.String()),
+				)),
+				v.ObjKV("command_name", v.String()),
+				v.ObjKV("command_arguments", v.String()),
+			)),
+		))),
+	)
 
-	// Action Chains
-	/*
-		   "action_chains": {
+	path, err := schema.Validate(parsed)
+	if err == nil {
+		validated = true
+		return nil
+	}
 
-		   		"*default": [
-		   			{
-		   				"action": "*email",
-		   				"data_groups": ["DataGroupName", "DataGroup2Name"]
-		   			},
-		   			{
-		   				"action": "*call",
-		   				"data_groups": ["DataGroupName"]
-		   			},
-		   			{
-		   				"action": "*localcommand",
-		   				"data_groups": ["DataGroupName"]
-		   			},
-		   			// etc...
-		   		],
-		   		"OneRandomName": [
-		   			{
-		   				"action": "*call",
-		   				"data_groups": ["DataGroupName", "DataGroup2Name"]
-		   			}
-		   		],
-		   		// etc...
+	return fmt.Errorf("Failed Validation at %s with error %s.\n", path, err)
 
-		   },
-		   name: action_chains
-		   values: *default or custom strings, default is mandatory if any of the monitors is enabled
-
-			 each value is an array of:
-			 action: string, mandatory, one of the defined actions
-			 data_groups: array of string, mandatory, one or more of the defined Data Groups
-	*/
-
-	// Data Groups
-	/*
-					"data_groups": {
-
-							"DataGroupName": {
-								"phone_number": "003519347396460",
-								"email_address": "username@domain",
-								"http_url": "api.somedomain.com/fraudion_in",
-								"http_method": "POST",
-								"http_parameters": {
-									"http_post_parameters_1_k": "http_post_parameters_1_v",
-									"http_post_parameters_2_k": "http_post_parameters_2_v"
-									// etc...
-								},
-								"command_name": "amportal",
-								"command_arguments": "stop"
-							}
-
-
-					}
-					name: data_groups
-					values: *default or custom strings (DataGroup Name), default is mandatory if any of the monitors is enabled
-
-					For each value:
-					the mandatory fiels depend on the type of actions that use the data_group on action chains
-
-
-			Dependencies:
-			Data Groups
-			Action Chains: Check if Action exists > Check if Data Group Exists, check if Data Group with Name has the required values for the Action
-			Monitors: Check if Action Chain exists
-		  CDRs Sources:
-		  Softswitch: Check if CDRs Source exists
-
-	*/
-
-	//return nil
 }

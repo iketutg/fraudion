@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	//"fmt"
 	"os"
 	"strings"
 	"time"
@@ -85,19 +85,8 @@ func main() {
 
 	}
 
-	// TODO: Debug: Remove this?
-	// fmt.Println("Log:", log)
-
-	if err := config.Parse2(*argCLIConfigIn, *argCLIConfigFilename); err != nil {
-		log.LogO("ERROR", "Can't proceed. :( There was an Error ("+err.Error()+")", marlog.OptionFatal) // TODO: This has to be changed becase config.Validate() returns an array/slice of errors
-	}
-
-	fmt.Println(config.Parsed2)
-
-	os.Exit(-1)
-
 	if err := config.Load(*argCLIConfigIn, *argCLIConfigFilename, false); err != nil {
-		log.LogO("ERROR", "Can't proceed. :( There was an Error ("+err.Error()+")", marlog.OptionFatal) // TODO: This has to be changed becase config.Validate() returns an array/slice of errors
+		log.LogO("ERROR", "Can't proceed. :( There was an Error ("+err.Error()+") loading configurations", marlog.OptionFatal) // TODO: This has to be changed becase config.Validate() returns an array/slice of errors
 	}
 
 	// * Monitored Softswitch Setup

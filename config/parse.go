@@ -1,18 +1,18 @@
 package config
 
 import (
-	"fmt"
 	"os"
 
 	"encoding/json"
 	"path/filepath"
 
 	"github.com/DisposaBoy/JsonConfigReader"
-	v "github.com/gima/govalid/v1"
 )
 
 // Parsed After config.Parse(...) is called, this variable holds the values parsed from the JSON config file specified
 var parsed *parsedValues
+
+//var parsed interface{}
 
 // Parse Parses the config file at "configDir" with name "configFileName" and puts the value on the config.Parsed variable
 func parse(configDir string, configFileName string) error {
@@ -27,75 +27,12 @@ func parse(configDir string, configFileName string) error {
 	defer configFile.Close()
 
 	parsed = new(parsedValues)
+	//parsed = new(map[string]interface{})
 
 	// NOTE: Really? In the end it was only one line of code?
 	if err = json.NewDecoder(JsonConfigReader.New(configFile)).Decode(parsed); err != nil {
 		parsed = nil
 		return err
-	}
-
-	return nil
-
-}
-
-// Parsed2 Parses the config file at "configDir" with name "configFileName" and puts the value on the config.Parsed variable
-var Parsed2 map[string]interface{}
-
-// Parse2 ...
-func Parse2(configDir string, configFileName string) error {
-
-	// NOTE: JSON Related Help at https://github.com/DisposaBoy/JsonConfigReader, https://golang.org/pkg/encoding/json/, https://blog.golang.org/json-and-go
-	// NOTE: Anything that can't be found will be saved to the JSON objects with empty values for the specified types
-
-	configFile, err := os.Open(filepath.Join(configDir, configFileName))
-	if err != nil {
-		return err
-	}
-	defer configFile.Close()
-
-	Parsed2 = make(map[string]interface{})
-
-	// NOTE: Really? In the end it was only one line of code?
-	if err = json.NewDecoder(JsonConfigReader.New(configFile)).Decode(&Parsed2); err != nil {
-		parsed = nil
-		return err
-	}
-
-	schema := v.Object(
-
-		v.ObjKV("general",
-
-			v.Object(
-				v.ObjKV("test", v.Number()),
-				v.ObjKV("test2", v.Number()))),
-
-		/*v.ObjKV("softswitch", v.Object(
-				//v.ObjKV("token", v.Function(myValidatorFunc)),
-				v.ObjKV("debug", v.Number(v.NumMin(1), v.NumMax(99999))),
-				v.ObjKV("items", v.Array(v.ArrEach(v.Object(
-					v.ObjKV("url", v.String(v.StrMin(1))),
-					v.ObjKV("comment", v.Optional(v.String())),
-				)))),
-				v.ObjKV("ghost", v.Optional(v.String())),
-				v.ObjKV("ghost2", v.Optional(v.String())),
-				v.ObjKV("meta", v.Object(
-					v.ObjKeys(v.String()),
-					v.ObjValues(v.Or(v.Number(v.NumMin(.01), v.NumMax(1.1)), v.String())),
-				))
-			),
-
-		)*/
-
-	)
-
-	//fmt.Println(Parsed2["cdrs_sources"])
-
-	// Validate some data using the created validator:
-
-	if path, err := schema.Validate(Parsed2); err == nil {
-		fmt.Println("Validation passed.")
-	} else {
-		fmt.Printf("Validation failed at %s. Error (%s)\n", path, err)
 	}
 
 	return nil
@@ -117,10 +54,10 @@ type generalJSON struct{}
 type softswitchJSON struct {
 	System     string
 	Version    string
-	CDRsSource string `json:"cdrs_source"`
+	CDRsSource map[string]string `json:"cdrs_source"`
 }
 
-type cdrsSources map[string]map[string]string
+//type cdrsSources map[string]map[string]string
 
 type monitorsJSON struct {
 	SimultaneousCalls     *monitorSimultaneousCallsJSON     `json:"*simultaneous_calls"`
@@ -188,21 +125,22 @@ type actionLocalCommandsJSON struct {
 	actionBaseJSON
 }
 
-type actionChains map[string][]actionChainAction
-
-type actionChainAction struct {
-	ActionName     string   `json:"action"`
-	DataGroupNames []string `json:"data_groups"`
-}
-
-type dataGroups map[string]dataGroup
-
-type dataGroup struct {
-	PhoneNumber      string            `json:"phone_number"`
-	EmailAddress     string            `json:"data_groups"`
-	HTTPURL          string            `json:"http_url"`
-	HTTPMethod       string            `json:"http_method"`
-	HTTPParameters   map[string]string `json:"data_groups"`
-	CommandName      string            `json:"command_name"`
-	CommandArguments string            `json:"command_arguments"`
-}
+//
+// type actionChains map[string][]actionChainAction
+//
+// type actionChainAction struct {
+// 	ActionName     string   `json:"action"`
+// 	DataGroupNames []string `json:"data_groups"`
+// }
+//
+// type dataGroups map[string]dataGroup
+//
+// type dataGroup struct {
+// 	PhoneNumber      string            `json:"phone_number"`
+// 	EmailAddress     string            `json:"data_groups"`
+// 	HTTPURL          string            `json:"http_url"`
+// 	HTTPMethod       string            `json:"http_method"`
+// 	HTTPParameters   map[string]string `json:"data_groups"`
+// 	CommandName      string            `json:"command_name"`
+// 	CommandArguments string            `json:"command_arguments"`
+// }
