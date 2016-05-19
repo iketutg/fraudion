@@ -90,6 +90,7 @@ func loadFromParsed() error {
 	if parsed.Monitors.SimultaneousCalls == nil {
 		Loaded.Monitors.SimultaneousCalls.Enabled = false
 	} else {
+		Loaded.Monitors.SimultaneousCalls.Enabled = parsed.Monitors.SimultaneousCalls.Enabled
 		executeInterval, err := time.ParseDuration(parsed.Monitors.SimultaneousCalls.ExecuteInterval)
 		if err != nil {
 			return fmt.Errorf("error converting string to time.Duration on Load, this should not happen... ever")
@@ -103,6 +104,7 @@ func loadFromParsed() error {
 	if parsed.Monitors.DangerousDestinations == nil {
 		Loaded.Monitors.DangerousDestinations.Enabled = false
 	} else {
+		Loaded.Monitors.DangerousDestinations.Enabled = parsed.Monitors.DangerousDestinations.Enabled
 		executeInterval, err := time.ParseDuration(parsed.Monitors.DangerousDestinations.ExecuteInterval)
 		if err != nil {
 			return fmt.Errorf("error converting string to time.Duration on Load, this should not happen... ever")
@@ -322,22 +324,22 @@ func loadFromParsed() error {
 	// TODO: All DataGroups used in Chains have the information for the specified Action?
 	Loaded.DataGroups = *parsed.DataGroups
 
-	// fmt.Println("\nParsed Configurations:")
-	// fmt.Println(parsed)
-	// fmt.Println(parsed.General)
-	// fmt.Println(parsed.Softswitch)
-	// fmt.Println(parsed.CDRsSources)
-	// fmt.Println(parsed.Monitors.DangerousDestinations, parsed.Monitors.ExpectedDestinations, parsed.Monitors.SimultaneousCalls, parsed.Monitors.SmallDurationCalls)
-	// fmt.Println(parsed.Actions.Email, parsed.Actions.LocalCommands)
-	// fmt.Println(parsed.ActionChains)
-	// fmt.Println(parsed.DataGroups)
-	// fmt.Println()
+	fmt.Println("\nParsed Configurations:")
+	fmt.Println(parsed)
+	fmt.Println(parsed.General)
+	fmt.Println(parsed.Softswitch)
+	fmt.Println(parsed.CDRsSources)
+	fmt.Println(parsed.Monitors.DangerousDestinations, parsed.Monitors.ExpectedDestinations, parsed.Monitors.SimultaneousCalls, parsed.Monitors.SmallDurationCalls)
+	fmt.Println(parsed.Actions.Email, parsed.Actions.LocalCommands)
+	fmt.Println(parsed.ActionChains)
+	fmt.Println(parsed.DataGroups)
+	fmt.Println()
 
-	// fmt.Println("*\n\n\n*")
+	fmt.Println("*\n\n\n*")
 
-	// fmt.Println("\nParsed Configurations:")
-	// fmt.Println(Loaded)
-	// fmt.Println()
+	fmt.Println("\nParsed Configurations:")
+	fmt.Println(Loaded)
+	fmt.Println()
 
 	return nil
 

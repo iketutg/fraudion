@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"time"
 
@@ -81,8 +82,6 @@ func main() {
 		log.LogO("ERROR", "Can't proceed. :( There was an error loading configurations from \""+configFileFullName+"\" ("+err.Error()+").", marlog.OptionFatal)
 	}
 
-	os.Exit(-1)
-
 	// * Monitored Softswitch Setup
 	log.LogS("INFO", "Configuring the monitored Softswitch...")
 	switch config.Loaded.Softswitch.Type {
@@ -131,30 +130,9 @@ func main() {
 		log.LogO("ERROR", "Can't proceed. :( There was an Error (unknown Softswitch type \""+config.Loaded.Softswitch.Type+"\" configured)", marlog.OptionFatal) // TODO: This should not happen in the future because it's going to be validated in the configuration parsing/loading phase
 	}
 
-	// fmt.Println("\nLoaded Configurations:")
-	// fmt.Println(config.Loaded.General)
-	// fmt.Println(config.Loaded.Softswitch)
-	// fmt.Println(config.Loaded.CDRsSources)
-	// fmt.Println(config.Loaded.Monitors.DangerousDestinations, config.Loaded.Monitors.ExpectedDestinations, config.Loaded.Monitors.SimultaneousCalls, config.Loaded.Monitors.SmallDurationCalls)
-	// fmt.Println(config.Loaded.Actions.Email, config.Loaded.Actions.Call, config.Loaded.Actions.HTTP, config.Loaded.Actions.LocalCommands)
-	// fmt.Println(config.Loaded.ActionChains)
-	// fmt.Println(config.Loaded.DataGroups)
-	// fmt.Println()
-	//
-	// fmt.Println("Loaded CDRs Sources:")
-	// fmt.Println(config.Loaded.CDRsSources)
-	// fmt.Println()
-	//
-	// fmt.Println("Softswitch:")
-	// fmt.Println(softswitches.Monitored)
-	// fmt.Println()
-	//
-	// fmt.Println("CDRs Source:")
-	// fmt.Println(softswitches.Monitored.GetCDRsSource())
-	// fmt.Println()
-
 	// * Config/Start Monitors
 	log.LogS("INFO", "Configuring the monitors...")
+	fmt.Println(config.Loaded)
 	if config.Loaded.Monitors.DangerousDestinations.Enabled == true {
 
 		log.LogS("INFO", "Monitor \"DangerousDestinations\" is Enabled")

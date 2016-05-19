@@ -9,7 +9,6 @@ import (
 	"os/exec"
 
 	"github.com/andmar/fraudion/config"
-
 	"github.com/andmar/marlog"
 
 	"github.com/SlyMarbo/gmail"
@@ -131,7 +130,8 @@ func (monitor *DangerousDestinations) Run() {
 
 								log.LogS("INFO", "Executing e-mail action")
 
-								body := fmt.Sprintf("Found:\n\n%v", hits)
+								//body := fmt.Sprintf("Found:\n\n%v", hits)
+								body := fmt.Sprintf("Test!")
 
 								email := gmail.Compose("Fraudion ALERT: Dangerous Destinations!", fmt.Sprintf("\n\n%s", body))
 								email.From = config.Loaded.Actions.Email.Username
@@ -151,7 +151,7 @@ func (monitor *DangerousDestinations) Run() {
 
 							}
 
-						} else if v.ActionName == "*localcommand" && config.Loaded.Actions.LocalCommands.Enabled == true {
+						} else if v.ActionName == "*local_commands" && config.Loaded.Actions.LocalCommands.Enabled == true {
 
 							if config.Loaded.Actions.Email.Recurrent == false && skipNonRecurrentActions == true {
 								log.LogS("ERROR", "Action is non recurrent, skipping...")
