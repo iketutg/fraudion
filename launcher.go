@@ -36,7 +36,7 @@ func main() {
 	// * Logger Setup
 	log := marlog.MarLog
 	log.Prefix = "FRAUDION"
-	log.Flags = marlog.FlagLdate | marlog.FlagLtime | marlog.FlagLlongfile
+	log.Flags = marlog.FlagLdate | marlog.FlagLtime | marlog.FlagLshortfile
 
 	// TODO: Error handling here?
 	log.SetStamp("ERROR", "*STDOUT")
