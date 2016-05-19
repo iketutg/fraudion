@@ -4,33 +4,21 @@ import (
 	"os"
 
 	"encoding/json"
-	"path/filepath"
 
 	"github.com/DisposaBoy/JsonConfigReader"
 )
 
-// Parsed After config.Parse(...) is called, this variable holds the values parsed from the JSON config file specified
 var parsed *parsedValues
 
-//var parsed interface{}
+func parseFromFile(configFile *os.File) error {
 
-// Parse Parses the config file at "configDir" with name "configFileName" and puts the value on the config.Parsed variable
-func parse(configDir string, configFileName string) error {
-
-	// NOTE: JSON Related Help at https://github.com/DisposaBoy/JsonConfigReader, https://golang.org/pkg/encoding/json/, https://blog.golang.org/json-and-go
-	// NOTE: Anything that can't be found will be saved to the JSON objects with empty values for the specified types
-
-	configFile, err := os.Open(filepath.Join(configDir, configFileName))
-	if err != nil {
-		return err
-	}
-	defer configFile.Close()
+	// NOTE: Validation reads through the whole file so we need to get back to the beginning.
+	configFile.Seek(0, 0)
 
 	parsed = new(parsedValues)
-	//parsed = new(map[string]interface{})
 
 	// NOTE: Really? In the end it was only one line of code?
-	if err = json.NewDecoder(JsonConfigReader.New(configFile)).Decode(parsed); err != nil {
+	if err := json.NewDecoder(JsonConfigReader.New(configFile)).Decode(parsed); err != nil {
 		parsed = nil
 		return err
 	}
@@ -52,33 +40,32 @@ type parsedValues struct {
 type generalJSON struct{}
 
 type softswitchJSON struct {
-	System     string
-	Version    string
-	CDRsSource map[string]string `json:"cdrs_source"`
+	Type           string
+	Version        string
+	CDRsSourceName string `json:"cdrs_source_name"`
 }
 
-//type cdrsSources map[string]map[string]string
+//type cdrsSources map[string]map[string]string // TODO: Moved to the load.go file
 
 type monitorsJSON struct {
-	SimultaneousCalls     *monitorSimultaneousCallsJSON     `json:"*simultaneous_calls"`
-	DangerousDestinations *monitorDangerousDestinationsJSON `json:"*dangerous_destinations"`
-	ExpectedDestinations  *monitorExpectedDestinationsJSON  `json:"*expected_destinations"`
-	SmallDurationCalls    *monitorSmallCallDurationsJSON    `json:"*small_duration_calls"`
+	SimultaneousCalls     *monitorSimultaneousCallsJSON     `json:"simultaneous_calls"`
+	DangerousDestinations *monitorDangerousDestinationsJSON `json:"dangerous_destinations"`
+	ExpectedDestinations  *monitorExpectedDestinationsJSON  `json:"expected_destinations"`
+	SmallDurationCalls    *monitorSmallCallDurationsJSON    `json:"small_duration_calls"`
 }
 
 type monitorBaseJSON struct {
-	Enabled                  bool
-	ExecuteInterval          string `json:"execute_interval"`
-	HitThreshold             uint32 `json:"hit_threshold"`
-	MinimumNumberLength      uint32 `json:"minimum_number_length"`
-	ActionChainName          string `json:"action_chain_name"`
-	ActionChainHoldoffPeriod uint32 `json:"action_chain_holdoff_period"`
-	MaxActionChainRunCount   uint32 `json:"action_chain_run_count"`
+	Enabled             bool
+	ExecuteInterval     string `json:"execute_interval"`
+	HitThreshold        uint32 `json:"hit_threshold"`
+	MinimumNumberLength uint32 `json:"minimum_number_length"`
+	ActionChainName     string `json:"action_chain_name"`
 }
 
 type monitorSimultaneousCallsJSON struct {
 	monitorBaseJSON
 }
+
 type monitorDangerousDestinationsJSON struct {
 	monitorBaseJSON
 	ConsiderCDRsFromLast string   `json:"consider_cdrs_from_last"`
@@ -86,6 +73,7 @@ type monitorDangerousDestinationsJSON struct {
 	MatchRegex           string   `json:"match_regex"`
 	IgnoreRegex          string   `json:"ignore_regex"`
 }
+
 type monitorExpectedDestinationsJSON struct {
 	monitorBaseJSON
 	ConsiderCDRsFromLast string   `json:"consider_cdrs_from_last"`
@@ -93,6 +81,7 @@ type monitorExpectedDestinationsJSON struct {
 	MatchRegex           string   `json:"match_regex"`
 	IgnoreRegex          string   `json:"ignore_regex"`
 }
+
 type monitorSmallCallDurationsJSON struct {
 	monitorBaseJSON
 	ConsiderCDRsFromLast string `json:"consider_cdrs_from_last"`
@@ -100,42 +89,38 @@ type monitorSmallCallDurationsJSON struct {
 }
 
 type actionsJSON struct {
-	Email         *actionEmailJSON         `json:"*email"`
-	Call          *actionCallJSON          `json:"*call"`
-	HTTP          *actionHTTPJSON          `json:"*http"`
-	LocalCommands *actionLocalCommandsJSON `json:"*local_commands"`
+	Email         *actionEmailJSON
+	LocalCommands *actionLocalCommandsJSON `json:"local_commands"`
 }
+
 type actionBaseJSON struct {
 	Enabled   bool
 	Recurrent bool
 }
+
 type actionEmailJSON struct {
 	actionBaseJSON
-	Username string `json:"gmail_username"`
-	Password string `json:"gmail_password"`
-	Message  string `json:"message"`
+	Type     string
+	Username string
+	Password string
+	Title    string
+	Body     string
 }
-type actionCallJSON struct {
-	actionBaseJSON
-}
-type actionHTTPJSON struct {
-	actionBaseJSON
-}
+
 type actionLocalCommandsJSON struct {
 	actionBaseJSON
 }
 
-//
-// type actionChains map[string][]actionChainAction
-//
-// type actionChainAction struct {
+// type actionChains map[string][]actionChainAction  // TODO: Moved to the load.go file
+
+// type actionChainAction struct {  // TODO: Moved to the load.go file
 // 	ActionName     string   `json:"action"`
 // 	DataGroupNames []string `json:"data_groups"`
 // }
-//
-// type dataGroups map[string]dataGroup
-//
-// type dataGroup struct {
+
+// type dataGroups map[string]dataGroup  // TODO: Moved to the load.go file
+
+// type dataGroup struct {  // TODO: Moved to the load.go file
 // 	PhoneNumber      string            `json:"phone_number"`
 // 	EmailAddress     string            `json:"data_groups"`
 // 	HTTPURL          string            `json:"http_url"`

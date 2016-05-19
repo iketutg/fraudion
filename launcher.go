@@ -2,9 +2,7 @@ package main
 
 import (
 	"flag"
-	//"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"path/filepath"
@@ -38,7 +36,7 @@ func main() {
 	// * Logger Setup
 	log := marlog.MarLog
 	log.Prefix = "FRAUDION"
-	log.Flags = marlog.FlagLdate | marlog.FlagLtime
+	log.Flags = marlog.FlagLdate | marlog.FlagLtime | marlog.FlagLlongfile
 
 	// TODO: Error handling here?
 	log.SetStamp("ERROR", "*STDOUT")
@@ -57,41 +55,37 @@ func main() {
 	log.LogS("INFO", "Parsing CLI flags...")
 	flag.Parse()
 
-	// TODO: This should default to constDefaultLogFile, maybe even handle a flag to disable logging
-	if strings.ToLower(*argCLILogTo) != "" && strings.ToLower(*argCLILogFilename) != "" {
+	logFileFullName := filepath.Join(*argCLILogTo, *argCLILogFilename)
 
-		logFileFullName := filepath.Join(*argCLILogTo, *argCLILogFilename)
+	log.LogS("INFO", "Setting up the main log file \""+logFileFullName+"\"...")
 
-		log.LogS("INFO", "Setting up the main log file \""+logFileFullName+"\"...")
+	logFile, err := os.OpenFile(logFileFullName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		log.LogO("ERROR", "Can't proceed. :( There was an Error opening/creating the Log file \""+logFileFullName+"\" ("+err.Error()+").", marlog.OptionFatal)
+	} else {
 
-		logFile, err := os.OpenFile(logFileFullName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-		if err != nil {
+		// TODO: Error handling here?
+		log.SetOutputHandle("MAINFILE", logFile)
 
-			log.LogO("ERROR", "Can't proceed. :( There was an Error ("+err.Error()+") opening/creating the Log file \""+logFileFullName+"\".", marlog.OptionFatal)
-
-		} else {
-
-			// TODO: Error handling here?
-			log.SetOutputHandle("MAINFILE", logFile)
-
-			log.AddOuputHandles("INFO", "MAINFILE")
-			log.LogS("INFO", "Started logging INFO messages to \""+logFileFullName+"\"")
-			log.AddOuputHandles("DEBUG", "MAINFILE")
-			log.LogS("INFO", "Started logging DEBUG messages to \""+logFileFullName+"\"")
-			log.AddOuputHandles("ERROR", "MAINFILE")
-			log.LogS("INFO", "Started logging ERROR messages to \""+logFileFullName+"\"")
-
-		}
+		log.AddOuputHandles("INFO", "MAINFILE")
+		log.LogS("INFO", "Started logging INFO messages to \""+logFileFullName+"\"")
+		log.AddOuputHandles("DEBUG", "MAINFILE")
+		log.LogS("INFO", "Started logging DEBUG messages to \""+logFileFullName+"\"")
+		log.AddOuputHandles("ERROR", "MAINFILE")
+		log.LogS("INFO", "Started logging ERROR messages to \""+logFileFullName+"\"")
 
 	}
 
-	if err := config.Load(*argCLIConfigIn, *argCLIConfigFilename, false); err != nil {
-		log.LogO("ERROR", "Can't proceed. :( There was an Error ("+err.Error()+") loading configurations", marlog.OptionFatal) // TODO: This has to be changed becase config.Validate() returns an array/slice of errors
+	configFileFullName := filepath.Join(*argCLIConfigIn, *argCLIConfigFilename)
+	if err := config.Load(configFileFullName, false); err != nil { // NOTE: Puts Verified configurations in config.Loaded
+		log.LogO("ERROR", "Can't proceed. :( There was an error loading configurations from \""+configFileFullName+"\" ("+err.Error()+").", marlog.OptionFatal)
 	}
+
+	os.Exit(-1)
 
 	// * Monitored Softswitch Setup
 	log.LogS("INFO", "Configuring the monitored Softswitch...")
-	switch config.Loaded.Softswitch.System {
+	switch config.Loaded.Softswitch.Type {
 	case softswitches.TypeAsterisk:
 
 		log.LogS("DEBUG", "Softswitch type Asterisk")
@@ -99,9 +93,9 @@ func main() {
 		newSoftswitch := new(softswitches.Asterisk)
 		newSoftswitch.Version = config.Loaded.Softswitch.Version
 
-		sourceInfo, found := config.Loaded.CDRsSources[config.Loaded.Softswitch.CDRsSource]
+		sourceInfo, found := config.Loaded.CDRsSources[config.Loaded.Softswitch.CDRsSourceName]
 		if found == false {
-			log.LogO("ERROR", "Can't proceed. :( There was an Error (could not find CDR Source with name \""+config.Loaded.Softswitch.CDRsSource+"\" in Loaded configurations)", marlog.OptionFatal) // TODO: This should not happen in the future because it's going to be validated in the configuration parsing/loading phase
+			log.LogO("ERROR", "Can't proceed. :( There was an error (could not find CDR Source with name \""+config.Loaded.Softswitch.CDRsSourceName+"\" in Loaded configurations)", marlog.OptionFatal) // TODO: This should not happen in the future because it's going to be validated in the configuration parsing/loading phase
 		}
 
 		switch sourceInfo["type"] {
@@ -134,7 +128,7 @@ func main() {
 		softswitches.Monitored = newSoftswitch
 
 	default:
-		log.LogO("ERROR", "Can't proceed. :( There was an Error (unknown Softswitch type \""+config.Loaded.Softswitch.System+"\" configured)", marlog.OptionFatal) // TODO: This should not happen in the future because it's going to be validated in the configuration parsing/loading phase
+		log.LogO("ERROR", "Can't proceed. :( There was an Error (unknown Softswitch type \""+config.Loaded.Softswitch.Type+"\" configured)", marlog.OptionFatal) // TODO: This should not happen in the future because it's going to be validated in the configuration parsing/loading phase
 	}
 
 	// fmt.Println("\nLoaded Configurations:")
