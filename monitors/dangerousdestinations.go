@@ -107,7 +107,7 @@ func (monitor *DangerousDestinations) Run() {
 
 				actionChainName := monitor.Config.ActionChainName
 				if actionChainName == "" {
-					actionChainName = "*default"
+					actionChainName = "default"
 				}
 				dataGroups := config.Loaded.DataGroups
 
