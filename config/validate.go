@@ -111,16 +111,16 @@ var configSchema = v.Object(
 	v.ObjKV("data_groups", v.Optional(v.Object(
 		v.ObjKeys(v.String()),
 		v.ObjValues(v.Object(
-			v.ObjKV("phone_number", v.String()),  // TODO: Validate a Phone Number
-			v.ObjKV("email_address", v.String()), // TODO: Validate an e-mail Address
-			v.ObjKV("http_url", v.String()),      // TODO: Validate an URL
-			v.ObjKV("http_method", v.Or(v.String(v.StrIs("POST")), v.String(v.StrIs("GET")))),
-			v.ObjKV("http_parameters", v.Object(
+			v.ObjKV("phone_number", v.Optional(v.String())),  // TODO: Validate a Phone Number
+			v.ObjKV("email_address", v.Optional(v.String())), // TODO: Validate an e-mail Address
+			v.ObjKV("http_url", v.Optional(v.String())),      // TODO: Validate an URL
+			v.ObjKV("http_method", v.Optional(v.Or(v.String(v.StrIs("POST")), v.String(v.StrIs("GET"))))),
+			v.ObjKV("http_parameters", v.Optional(v.Object(
 				v.ObjKeys(v.String()),
 				v.ObjValues(v.String()),
-			)),
-			v.ObjKV("command_name", v.String()),
-			v.ObjKV("command_arguments", v.String()),
+			))),
+			v.ObjKV("command_name", v.Optional(v.String())),
+			v.ObjKV("command_arguments", v.Optional(v.String())),
 		)),
 	))),
 )

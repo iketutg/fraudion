@@ -292,6 +292,8 @@ func loadFromParsed() error {
 		}
 	}
 
+	// Action Chains
+	Loaded.ActionChains = *parsed.ActionChains
 	// NOTE: All Actions in Chains are enabled?
 	allEnabled := true
 	for _, chain := range *parsed.ActionChains {
@@ -318,11 +320,38 @@ func loadFromParsed() error {
 		return fmt.Errorf("some configured action in chain is not enabled")
 	}
 
-	Loaded.ActionChains = *parsed.ActionChains
-
 	// Data Groups
-	// TODO: All DataGroups used in Chains have the information for the specified Action?
 	Loaded.DataGroups = *parsed.DataGroups
+	// NOTE: All DataGroups used in Chains have the information for the specified Action?
+	for _, chain := range *parsed.ActionChains {
+
+		for _, action := range chain {
+
+			for _, dataGroupName := range action.DataGroupNames {
+
+				dataGroup, exists := Loaded.DataGroups[dataGroupName]
+				if exists == false {
+					return fmt.Errorf("some configured data group in chain is not defined")
+				}
+
+				switch action.ActionName {
+				case "*email":
+					if dataGroup.EmailAddress == "" {
+						return fmt.Errorf("some E-mail action requires email_address value defined in Data Group")
+					}
+				case "*local_commands":
+					if dataGroup.CommandName == "" {
+						return fmt.Errorf("some Local Commands action requires command_name value defined in Data Group")
+					}
+				default:
+					return fmt.Errorf("unknown action, this should never happen")
+				}
+
+			}
+
+		}
+
+	}
 
 	fmt.Println("\nParsed Configurations:")
 	fmt.Println(parsed)
@@ -335,7 +364,7 @@ func loadFromParsed() error {
 	fmt.Println(parsed.DataGroups)
 	fmt.Println()
 
-	fmt.Println("*\n\n\n*")
+	fmt.Println("*\n\n*")
 
 	fmt.Println("\nParsed Configurations:")
 	fmt.Println(Loaded)
@@ -344,10 +373,6 @@ func loadFromParsed() error {
 	return nil
 
 }
-
-/*
-
- */
 
 type loadedValues struct {
 	General      general
@@ -435,19 +460,19 @@ type actionLocalCommands struct {
 
 type actionChains map[string][]actionChainAction
 
-type dataGroups map[string]dataGroup
-
 type actionChainAction struct {
 	ActionName     string   `json:"action_name"`
 	DataGroupNames []string `json:"data_groups"`
 }
 
+type dataGroups map[string]dataGroup
+
 type dataGroup struct {
 	PhoneNumber      string            `json:"phone_number"`
-	EmailAddress     string            `json:"data_groups"`
+	EmailAddress     string            `json:"email_address"`
 	HTTPURL          string            `json:"http_url"`
 	HTTPMethod       string            `json:"http_method"`
-	HTTPParameters   map[string]string `json:"data_groups"`
+	HTTPParameters   map[string]string `json:"http_parameters"`
 	CommandName      string            `json:"command_name"`
 	CommandArguments string            `json:"command_arguments"`
 }
