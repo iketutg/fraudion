@@ -1,11 +1,5 @@
 package utils
 
-import (
-	"fmt"
-
-	"github.com/andmar/fraudion/logger"
-)
-
 // StringInStringsSlice ...
 func StringInStringsSlice(str string, list []string) bool {
 	for _, v := range list {
@@ -24,17 +18,4 @@ func StringKeyInMap(theKey string, theMap map[string]interface{}) bool {
 		}
 	}
 	return false
-}
-
-// DebugLogAndGetError ...
-func DebugLogAndGetError(errorMessage string, getError bool) error {
-
-	logger.Log.Write(logger.ConstLoggerLevelError, errorMessage, false)
-
-	if getError {
-		return fmt.Errorf(errorMessage)
-	}
-
-	return nil
-
 }
