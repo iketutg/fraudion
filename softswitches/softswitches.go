@@ -1,11 +1,15 @@
 package softswitches
 
 import (
+	"bufio"
 	"fmt"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"database/sql"
+	"os/exec"
 
 	"github.com/andmar/marlog"
 )
@@ -101,6 +105,46 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 	default:
 		return nil, fmt.Errorf("unknown CDRs Source object type)")
 	}
+
+}
+
+// GetCurrentActiveCalls ...
+func (asterisk *Asterisk) GetCurrentActiveCalls() (uint32, error) {
+
+	// TODO: Make this depend on the Asterisk version because command format and result parsing may vary!
+
+	command := exec.Command("asterisk", "-rx 'core show channels'")
+
+	output, err := command.Output()
+
+	if err != nil {
+		return 0, err
+	}
+
+	reader := strings.NewReader("")
+	reader.Read(output)
+
+	scanner := bufio.NewScanner(reader)
+
+	for scanner.Scan() {
+
+		lineText := scanner.Text()
+
+		if strings.Contains(lineText, "active calls") {
+
+			items := strings.Split(lineText, " ")
+			numberOfCalls, err := strconv.Atoi(items[0])
+
+			if err != nil {
+				return 0, err
+			}
+
+			return uint32(numberOfCalls), nil
+		}
+
+	}
+
+	return 0, fmt.Errorf("could not get number of active calls value from command output, is the Asterisk version you're using supported?")
 
 }
 
