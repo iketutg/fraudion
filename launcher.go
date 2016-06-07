@@ -27,10 +27,11 @@ const (
 )
 
 var (
-	argCLILogTo          = flag.String("logto", constDefaultLogDir, "Directory where to save the log file.")
-	argCLILogFilename    = flag.String("logfile", constDefaultLogFile, "Log file's name.")
-	argCLIConfigIn       = flag.String("cfgin", constDefaultConfigDir, "Directory where to search the config file.")
-	argCLIConfigFilename = flag.String("cfgfile", constDefaultConfigFilename, "Config file's name.")
+	argCLILogTo              = flag.String("logto", constDefaultLogDir, "Directory where to save the log file.")
+	argCLILogFilename        = flag.String("logfile", constDefaultLogFile, "Log file's name.")
+	argCLIConfigIn           = flag.String("cfgin", constDefaultConfigDir, "Directory where to search the config file.")
+	argCLIConfigFilename     = flag.String("cfgfile", constDefaultConfigFilename, "Config file's name.")
+	argCLIValidateConfigOnly = flag.Bool("cfgvalidate", false, "Validate config file only.")
 )
 
 func main() {
@@ -71,6 +72,31 @@ func main() {
 
 	// * Config Loading
 	configFileFullName := filepath.Join(*argCLIConfigIn, *argCLIConfigFilename)
+
+	if *argCLIValidateConfigOnly {
+
+		log.LogS("INFO", "Validating configuration file...")
+
+		configFile, err := os.Open(configFileFullName)
+
+		if err != nil {
+
+			log.LogS("INFO", "Could not open config file for validation: "+err.Error())
+
+		} else {
+
+			defer configFile.Close()
+
+			if err := config.ValidateFromFile(configFile); err != nil {
+				log.LogS("INFO", "Config file FAILED validation: "+err.Error())
+			}
+
+			log.LogS("INFO", "Config file PASSED validation. :)")
+
+		}
+
+		os.Exit(0)
+	}
 
 	log.LogS("INFO", "Setting up Config loading from config file \""+configFileFullName+"\"...")
 

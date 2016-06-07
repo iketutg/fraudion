@@ -25,7 +25,7 @@ func Load(configFileFullName string) error {
 	defer configFile.Close()
 
 	log.LogS("INFO", "Validating configuration format in file...")
-	if err := validateFromFile(configFile); err != nil {
+	if err := ValidateFromFile(configFile); err != nil {
 		return err
 	}
 

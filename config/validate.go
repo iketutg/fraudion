@@ -130,7 +130,8 @@ var configSchema = v.Object(
 	))),
 )
 
-func validateFromFile(configFile *os.File) error {
+// ValidateFromFile ...
+func ValidateFromFile(configFile *os.File) error {
 
 	var data interface{}
 	if err := json.NewDecoder(JsonConfigReader.New(configFile)).Decode(&data); err != nil {
