@@ -114,7 +114,7 @@ func main() {
 			newSoftswitch.CDRsSource = newSource
 
 		default:
-			// TODO: This should not happen in the future because it's going to be validated in the configuration parsing/loading phase
+			// NOTE: This should not happen in the future because it's going to be validated in the configuration parsing/loading phase
 			log.LogO("ERROR", "Can't proceed. :( There was an Error (unknown CDR Source type \""+sourceInfo["type"]+"\" configured)", marlog.OptionFatal)
 		}
 
@@ -126,15 +126,12 @@ func main() {
 		softswitches.Monitored = newSoftswitch
 
 	default:
-		// TODO: This should not happen in the future because it's going to be validated in the configuration parsing/loading phase
+		// NOTE: This should not happen in the future because it's going to be validated in the configuration parsing/loading phase
 		log.LogO("ERROR", "Can't proceed. :( There was an Error (unknown Softswitch type \""+config.Loaded.Softswitch.Type+"\" configured)", marlog.OptionFatal)
 	}
 
-	//result, err := softswitches.Monitored.GetCurrentActiveCalls(config.Loaded.Monitors.SimultaneousCalls.MinimumNumberLength)
-	//fmt.Println("Result:", result, "Error:", err)
-	//os.Exit(-1)
-
 	// * Config/Start Monitors
+
 	log.LogS("INFO", "Configuring the monitors...")
 	fmt.Println(config.Loaded)
 
