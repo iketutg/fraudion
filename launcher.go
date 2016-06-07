@@ -19,17 +19,17 @@ import (
 )
 
 const (
-	constDefaultConfigDir      = "." // NOTE: The system defaults to search the config file "fraudion.json" on the "run" directory
+	constDefaultConfigDir      = "."
 	constDefaultConfigFilename = "fraudion.json"
 	constDefaultLogDir         = "."
 	constDefaultLogFile        = "fraudion.log" // TODO: Should we keep the system defaulting to STDOUT or use this value?
 )
 
 var (
-	argCLILogTo          = flag.String("logto", constDefaultLogDir, "<help message for 'logto'>")
-	argCLILogFilename    = flag.String("logfile", constDefaultLogFile, "<help message for 'logfile'>")
-	argCLIConfigIn       = flag.String("cfgin", constDefaultConfigDir, "<help message for 'cfgin'>")
-	argCLIConfigFilename = flag.String("cfgfile", constDefaultConfigFilename, "<help message for 'cfgfile'>")
+	argCLILogTo          = flag.String("logto", constDefaultLogDir, "Directory where to save the log file.")
+	argCLILogFilename    = flag.String("logfile", constDefaultLogFile, "Log file's name.")
+	argCLIConfigIn       = flag.String("cfgin", constDefaultConfigDir, "Directory where to search the config file.")
+	argCLIConfigFilename = flag.String("cfgfile", constDefaultConfigFilename, "Config file's name.")
 )
 
 func main() {
@@ -39,33 +39,25 @@ func main() {
 	log.Prefix = "FRAUDION"
 	log.Flags = marlog.FlagLdate | marlog.FlagLtime | marlog.FlagLshortfile
 
-	// TODO: Error handling here?
 	log.SetStamp("ERROR", "*STDOUT")
 	log.SetStamp("DEBUG", "*STDOUT")
 	log.SetStamp("INFO", "*STDOUT")
 
-	// TODO: Remove this? This was just used for testing!
-	log.SetStamp("VERBOSE", "*STDOUT")
-	log.DeactivateStamps("VERBOSE")
-	log.LogS("VERBOSE", "Test Verbose!")
-
 	system.State.StartUpTime = time.Now()
 
-	// TODO: Error handling here?
-	log.LogS("INFO", "Starting Fraudion at "+system.State.StartUpTime.String())
+	log.LogS("INFO", "Fraudion started at "+system.State.StartUpTime.String())
 	log.LogS("INFO", "Parsing CLI flags...")
 	flag.Parse()
 
 	logFileFullName := filepath.Join(*argCLILogTo, *argCLILogFilename)
 
-	log.LogS("INFO", "Setting up the main log file \""+logFileFullName+"\"...")
+	log.LogS("INFO", "Setting up the Log file \""+logFileFullName+"\"...")
 
 	logFile, err := os.OpenFile(logFileFullName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		log.LogO("ERROR", "Can't proceed. :( There was an Error opening/creating the Log file \""+logFileFullName+"\" ("+err.Error()+").", marlog.OptionFatal)
 	} else {
 
-		// TODO: Error handling here?
 		log.SetOutputHandle("MAINFILE", logFile)
 
 		log.AddOuputHandles("INFO", "MAINFILE")
@@ -78,6 +70,9 @@ func main() {
 	}
 
 	configFileFullName := filepath.Join(*argCLIConfigIn, *argCLIConfigFilename)
+
+	log.LogS("INFO", "Setting up Config loading from config file \""+configFileFullName+"\"...")
+
 	if err := config.Load(configFileFullName, false); err != nil { // NOTE: Puts Verified configurations in config.Loaded
 		log.LogO("ERROR", "Can't proceed. :( There was an error loading configurations from \""+configFileFullName+"\" ("+err.Error()+").", marlog.OptionFatal)
 	}
@@ -130,7 +125,7 @@ func main() {
 		log.LogO("ERROR", "Can't proceed. :( There was an Error (unknown Softswitch type \""+config.Loaded.Softswitch.Type+"\" configured)", marlog.OptionFatal) // TODO: This should not happen in the future because it's going to be validated in the configuration parsing/loading phase
 	}
 
-	//result, err := softswitches.Monitored.GetCurrentActiveCalls()
+	//result, err := softswitches.Monitored.GetCurrentActiveCalls(config.Loaded.Monitors.SimultaneousCalls.MinimumNumberLength)
 	//fmt.Println("Result:", result, "Error:", err)
 	//os.Exit(-1)
 
