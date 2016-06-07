@@ -27,7 +27,7 @@ func (monitor *SimultaneousCalls) Run() {
 
 		log.LogS("DEBUG", "Querying Softswitch for Current Active Calls...")
 
-		numberOfCalls, err := monitor.Softswitch.GetCurrentActiveCalls()
+		numberOfCalls, err := monitor.Softswitch.GetCurrentActiveCalls(monitor.Config.MinimumNumberLength)
 		if err != nil {
 			log.LogS("ERROR", err.Error())
 		} else {

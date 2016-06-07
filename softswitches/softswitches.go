@@ -34,7 +34,7 @@ var Monitored Softswitch
 type Softswitch interface {
 	GetCDRsSource() CDRsSource
 	GetHits(func(string) (string, bool, error), time.Duration) (map[string]*Hits, error)
-	GetCurrentActiveCalls() (uint32, error)
+	GetCurrentActiveCalls(uint32) (uint32, error)
 }
 
 // Asterisk ...
@@ -114,7 +114,7 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 }
 
 // GetCurrentActiveCalls ...
-func (asterisk *Asterisk) GetCurrentActiveCalls() (uint32, error) {
+func (asterisk *Asterisk) GetCurrentActiveCalls(minimumNumberLength uint32) (uint32, error) {
 
 	// TODO: Make this depend on the Asterisk version because command format and result parsing may vary!
 
@@ -137,7 +137,12 @@ func (asterisk *Asterisk) GetCurrentActiveCalls() (uint32, error) {
 		matchedString := matchesDialString.FindString(lineItems[6])
 
 		if lineItems[5] == "Dial" || matchedString != "" { // NOTE: Ignore if "lastapp" is not Dial and "lastdata" does not contain an expected dial string
-			numberOfCalls++
+
+			dialedNumber := matchesDialString.FindStringSubmatch(lineItems[6])[1]
+
+			if uint32(len(dialedNumber)) > minimumNumberLength {
+				numberOfCalls++
+			}
 		}
 
 	}
