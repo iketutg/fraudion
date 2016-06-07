@@ -1,0 +1,9 @@
+package: github.com/andmar/fraudion
+import:
+- package: github.com/DisposaBoy/JsonConfigReader
+- package: github.com/SlyMarbo/gmail
+- package: github.com/andmar/marlog
+- package: github.com/gima/govalid
+  subpackages:
+  - v1
+- package: github.com/go-sql-driver/mysql

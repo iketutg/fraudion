@@ -1,0 +1,17 @@
+hash: 91918850275012220402341eaf7d32c3e204bdd581c4ca2354d903beabafdc0c
+updated: 2016-06-07T16:10:45.961416089+01:00
+imports:
+- name: github.com/andmar/marlog
+  version: 1b1025ffb66e439d6656db3d10a9ac34a6500e1a
+- name: github.com/DisposaBoy/JsonConfigReader
+  version: 33a99fdf1d5ee1f79b5077e9c06f955ad356d5f4
+- name: github.com/gima/govalid
+  version: 1221c3e29f8359e631167d1b18e8d5e8c633ec16
+  subpackages:
+  - v1
+  - v1/internal
+- name: github.com/go-sql-driver/mysql
+  version: 3654d25ec346ee8ce71a68431025458d52a38ac0
+- name: github.com/SlyMarbo/gmail
+  version: d2efaae1e4e0ef4c0107ec67d8ea43ee60473cca
+devImports: []
