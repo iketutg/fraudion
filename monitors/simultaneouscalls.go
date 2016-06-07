@@ -1,125 +1,117 @@
 package monitors
 
-/*
 import (
-	"bufio"
 	"fmt"
-	"regexp"
-	"strconv"
 	"time"
 
 	"os/exec"
 
 	"github.com/SlyMarbo/gmail"
 
-	"github.com/andmar/fraudion/fraudion"
-	"github.com/andmar/fraudion/logger"
+	"github.com/andmar/fraudion/config"
+	"github.com/andmar/marlog"
 )
 
-// SimultaneousCallsRun ...
-func SimultaneousCallsRun() {
+// Run ...
+func (monitor *SimultaneousCalls) Run() {
 
-	fraudion := fraudion.Global
-	configs := fraudion.Configs
-	state := fraudion.State.Triggers
+	log := marlog.MarLog
 
-	configsTrigger := configs.Triggers.SimultaneousCalls
-	stateTrigger := state.StateDangerousDestinations
+	log.LogS("INFO", "Started Monitor SimultaneousCalls!")
 
-	logger.Log.Write(logger.ConstLoggerLevelInfo, "Starting Trigger, \"SimultaneousCalls\"...", false)
+	log.LogS("DEBUG", "Setting up time Ticker with interval \""+monitor.Config.ExecuteInterval.String()+"\"")
 
-	ticker := time.NewTicker(configsTrigger.ExecuteInterval)
+	for tickTime := range time.NewTicker(monitor.Config.ExecuteInterval).C { // NOTE: Replace "_" with "currentTime" and Log execution start time
 
-	for executionTime := range ticker.C {
+		log.LogS("INFO", "Monitor SimultaneousCalls ticked at "+tickTime.String())
 
-		logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("SimultaneousCalls Trigger executed at %s", executionTime), false)
+		log.LogS("DEBUG", "Querying Softswitch for Current Active Calls...")
 
-		//command := exec.Command("asterisk", "-rx 'core show channels'")
-		command := exec.Command("asterisk", "-rx", "core show channels")
-		stdout, err := command.StdoutPipe()
+		numberOfCalls, err := monitor.Softswitch.GetCurrentActiveCalls()
 		if err != nil {
-			fmt.Println(err.Error())
-		}
+			log.LogS("ERROR", err.Error())
+		} else {
 
-		if err := command.Start(); err != nil {
-			fmt.Println(err.Error())
-		}
+			// NOTE: This block has to be here because we reset the value of monitor.State.RunMode below, this catches state changes
+			skipNonRecurrentActions := false
+			if monitor.State.RunMode != RunModeNormal {
+				skipNonRecurrentActions = true
+			}
 
-		in := bufio.NewScanner(stdout)
+			if numberOfCalls > monitor.Config.HitThreshold {
+				monitor.State.RunMode = RunModeInAlarm
+			}
 
-		for in.Scan() {
+			runModeString := ""
+			switch monitor.State.RunMode {
+			case RunModeInWarning:
+			case RunModeInAlarm:
+				runModeString = "Alarm/Warning"
+				log.LogS("INFO", "System is in Alarm/Warning")
+			default:
+				runModeString = "Normal"
+				log.LogS("INFO", "System detected nothing. :)")
+			}
 
-			searchActiveCallsNumber := regexp.MustCompile("^([0-9]+) active calls?$") // NOTE: Supported dial string format
-			isActiveCallsLine := searchActiveCallsNumber.MatchString(in.Text())
+			log.LogS("DEBUG", "RunMode after Simultaneous Calls check is "+runModeString)
 
-			if isActiveCallsLine {
+			if monitor.State.RunMode != RunModeNormal {
 
-				activeCalls := searchActiveCallsNumber.FindStringSubmatch(in.Text())[1]
-				logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Active Calls: %s", activeCalls), false)
+				log.LogS("INFO", "Will execute action chain")
 
-				activeCallsInt, err := strconv.Atoi(activeCalls)
-				if err == nil {
+				actionChainName := monitor.Config.ActionChainName
+				if actionChainName == "" {
+					actionChainName = "default"
+				}
+				dataGroups := config.Loaded.DataGroups
 
-					runActionChain := false
+				log.LogS("DEBUG", "ActionChain to execute has name \""+actionChainName+"\"")
 
-					if uint32(activeCallsInt) > configsTrigger.HitThreshold {
+				actionChain, found := config.Loaded.ActionChains[actionChainName]
+				if found == false {
+					log.LogS("ERROR", "ActionChain not found by name")
+				} else {
 
-						logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Active Calls greater than threshold (%v)\n", configsTrigger.HitThreshold), false)
+					log.LogS("INFO", "ActionChain found, looping Actions...")
 
-						runActionChain = true
+					for _, v := range actionChain {
 
-					}
+						if v.ActionName == "*email" && config.Loaded.Actions.Email.Enabled == true {
 
-					actionChainGuardTime := stateTrigger.LastActionChainRunTime.Add(configs.General.DefaultActionChainHoldoffPeriod)
+							if config.Loaded.Actions.Email.Recurrent == false && skipNonRecurrentActions == true {
+								log.LogS("INFO", "Action is non recurrent, skipping...")
+							} else {
 
-					logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("stateTrigger.LastActionChainRunTime: %s", stateTrigger.LastActionChainRunTime), false)
-					logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("configs.General.DefaultActionChainHoldoffPeriod: %s", configs.General.DefaultActionChainHoldoffPeriod), false)
-					logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("actionChainGuardTime: %s", actionChainGuardTime), false)
-					logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Now(): %s", time.Now()), false)
-					logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("actionChainGuardTime < Now(): %v", actionChainGuardTime.Before(time.Now())), false)
-					logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("stateTrigger.ActionChainRunCount > 0: %v", stateTrigger.ActionChainRunCount > 0), false)
+								log.LogS("INFO", "Executing e-mail action")
 
-					if runActionChain && actionChainGuardTime.Before(time.Now()) && stateTrigger.ActionChainRunCount > 0 {
+								//body := fmt.Sprintf("Found:\n\n%v", hits)
+								body := fmt.Sprintf("Test!")
 
-						state.StateSimultaneousCalls.ActionChainRunCount = stateTrigger.ActionChainRunCount - 1
-
-						actionChainName := configsTrigger.ActionChainName
-						if actionChainName == "" {
-							actionChainName = "*default"
-						}
-
-						logger.Log.Write(logger.ConstLoggerLevelInfo, fmt.Sprintf("Running action chain: %s", actionChainName), false)
-						stateTrigger.LastActionChainRunTime = time.Now()
-
-						actionChain := configs.ActionChains.List[actionChainName]
-						dataGroups := configs.DataGroups.List
-
-						for _, v := range actionChain {
-
-							if v.ActionName == "*email" {
-
-								// TODO: Should we assert here that Email Action is enabled here or on config validation?
-
-								body := fmt.Sprintf("Active Calls:\n\n%v", activeCallsInt)
-
-								email := gmail.Compose("Fraudion ALERT: Simultaneous Calls!", fmt.Sprintf("\n\n%s", body))
-								email.From = configs.Actions.Email.Username
-								email.Password = configs.Actions.Email.Password
-								fmt.Println(configs.Actions.Email.Username, configs.Actions.Email.Password)
+								email := gmail.Compose("Fraudion ALERT: Dangerous Destinations!", fmt.Sprintf("\n\n%s", body))
+								email.From = config.Loaded.Actions.Email.Username
+								email.Password = config.Loaded.Actions.Email.Password
 								email.ContentType = "text/html; charset=utf-8"
+
 								for _, dataGroupName := range v.DataGroupNames {
-									fmt.Println(dataGroups[dataGroupName].EmailAddress)
+
 									email.AddRecipient(dataGroups[dataGroupName].EmailAddress)
+
 								}
 
 								err := email.Send()
 								if err != nil {
-									fmt.Println(err.Error())
+									log.LogS("ERROR", "Could not send the e-mail, an error ("+err.Error()+") ocurred")
 								}
 
-							} else if v.ActionName == "*localcommand" {
+							}
 
-								// TODO: Should we assert here that the run user of the process has "root" permissions?
+						} else if v.ActionName == "*local_commands" && config.Loaded.Actions.LocalCommands.Enabled == true {
+
+							if config.Loaded.Actions.Email.Recurrent == false && skipNonRecurrentActions == true {
+								log.LogS("ERROR", "Action is non recurrent, skipping...")
+							} else {
+
+								log.LogS("INFO", "Executing local command action")
 
 								for _, dataGroupName := range v.DataGroupNames {
 
@@ -127,32 +119,27 @@ func SimultaneousCallsRun() {
 
 									err := command.Run()
 									if err != nil {
-										fmt.Println(err.Error())
+										log.LogS("ERROR", "Could not execute the command, an error ("+err.Error()+") ocurred")
 									}
 
 								}
 
-							} else {
-
-								fmt.Println("Unsupported Action!")
-
 							}
+
+						} else {
+
+							log.LogS("ERROR", "Unsupported Action")
 
 						}
 
 					}
 
-				} else {
-					fmt.Println(err.Error())
 				}
 
 			}
 
 		}
-		if err := in.Err(); err != nil {
-			fmt.Println(err.Error())
-		}
 
 	}
 
-}*/
+}

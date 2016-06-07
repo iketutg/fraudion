@@ -130,9 +130,14 @@ func main() {
 		log.LogO("ERROR", "Can't proceed. :( There was an Error (unknown Softswitch type \""+config.Loaded.Softswitch.Type+"\" configured)", marlog.OptionFatal) // TODO: This should not happen in the future because it's going to be validated in the configuration parsing/loading phase
 	}
 
+	//result, err := softswitches.Monitored.GetCurrentActiveCalls()
+	//fmt.Println("Result:", result, "Error:", err)
+	//os.Exit(-1)
+
 	// * Config/Start Monitors
 	log.LogS("INFO", "Configuring the monitors...")
 	fmt.Println(config.Loaded)
+
 	if config.Loaded.Monitors.DangerousDestinations.Enabled == true {
 
 		log.LogS("INFO", "Monitor \"DangerousDestinations\" is Enabled")
@@ -146,9 +151,21 @@ func main() {
 
 	}
 
-	log.LogS("INFO", "All set, main thread is going to sleep now...")
+	if config.Loaded.Monitors.SimultaneousCalls.Enabled == true {
 
-	// Sleep!
+		log.LogS("INFO", "Monitor \"SimultaneousCalls\" is Enabled")
+
+		ddMonitor := new(monitors.SimultaneousCalls)
+		ddMonitor.Config = &config.Loaded.Monitors.SimultaneousCalls
+		ddMonitor.Softswitch = softswitches.Monitored
+
+		log.LogS("INFO", "Starting execution of monitor \"SimultaneousCalls\"...")
+		go ddMonitor.Run()
+
+	}
+
+	// "Sleep!""
+	log.LogS("INFO", "All set, main thread is going to sleep now...")
 	for {
 
 		// Main "thread" has to Sleep or else 100% CPU...

@@ -2,9 +2,9 @@ package softswitches
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -23,6 +23,10 @@ const (
 	CDRSourceDatabase = "*database"
 )
 
+const (
+	asteriskDialString = "(?:SIP|DAHDI)/[^@&]+/([0-9]+)" // NOTE: Currently supported dial string format
+)
+
 // Monitored ...
 var Monitored Softswitch
 
@@ -30,6 +34,7 @@ var Monitored Softswitch
 type Softswitch interface {
 	GetCDRsSource() CDRsSource
 	GetHits(func(string) (string, bool, error), time.Duration) (map[string]*Hits, error)
+	GetCurrentActiveCalls() (uint32, error)
 }
 
 // Asterisk ...
@@ -76,7 +81,7 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 
 			//fmt.Println(calldate, clid, src, dst, dcontext, channel, dstchannel, lastapp, lastdata, duration, billsec, disposition, amaflags, accountcode, uniqueid, userfield)
 
-			matchesDialString := regexp.MustCompile("(?:SIP|DAHDI)/[^@&]+/([0-9]+)") // NOTE: Currently supported dial string format
+			matchesDialString := regexp.MustCompile(asteriskDialString)
 			matchedString := matchesDialString.FindString(lastdata)
 			if lastapp != "Dial" || matchedString == "" { // NOTE: Ignore if "lastapp" is not Dial and "lastdata" does not contain an expected dial string
 				continue
@@ -113,38 +118,31 @@ func (asterisk *Asterisk) GetCurrentActiveCalls() (uint32, error) {
 
 	// TODO: Make this depend on the Asterisk version because command format and result parsing may vary!
 
-	command := exec.Command("asterisk", "-rx 'core show channels'")
+	command := exec.Command("asterisk", "-rx 'core show channels concise'")
+	//command := exec.Command("cat", "asterisk.output") // NOTE: This is a just a test code to test Asterisk output without a local Asterisk via the non-commited text file: asterisk.output where one can put example output
 
 	output, err := command.Output()
-
 	if err != nil {
 		return 0, err
 	}
 
-	reader := strings.NewReader("")
-	reader.Read(output)
+	numberOfCalls := 0
 
-	scanner := bufio.NewScanner(reader)
-
+	scanner := bufio.NewScanner(bytes.NewReader(output))
 	for scanner.Scan() {
 
-		lineText := scanner.Text()
+		lineItems := strings.Split(scanner.Text(), "!")
 
-		if strings.Contains(lineText, "active calls") {
+		matchesDialString := regexp.MustCompile(asteriskDialString)
+		matchedString := matchesDialString.FindString(lineItems[6])
 
-			items := strings.Split(lineText, " ")
-			numberOfCalls, err := strconv.Atoi(items[0])
-
-			if err != nil {
-				return 0, err
-			}
-
-			return uint32(numberOfCalls), nil
+		if lineItems[5] == "Dial" || matchedString != "" { // NOTE: Ignore if "lastapp" is not Dial and "lastdata" does not contain an expected dial string
+			numberOfCalls++
 		}
 
 	}
 
-	return 0, fmt.Errorf("could not get number of active calls value from command output, is the Asterisk version you're using supported?")
+	return uint32(numberOfCalls), nil
 
 }
 

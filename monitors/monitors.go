@@ -30,8 +30,14 @@ type monitorBase struct {
 type DangerousDestinations struct {
 	monitorBase
 	Config *config.MonitorDangerousDestinations
-	//Config ConfigDangerousDestinations // TODO: This will have the loaded configurations, launcher.go will fill it
-	State StateDangerousDestinations
+	State  StateDangerousDestinations
+}
+
+// SimultaneousCalls ...
+type SimultaneousCalls struct {
+	monitorBase
+	Config *config.MonitorSimultaneousCalls
+	State  StateSimultaneousCalls
 }
 
 type stateBase struct {
@@ -42,5 +48,10 @@ type stateBase struct {
 
 // StateDangerousDestinations ...
 type StateDangerousDestinations struct {
+	stateBase
+}
+
+// StateSimultaneousCalls ...
+type StateSimultaneousCalls struct {
 	stateBase
 }
