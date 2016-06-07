@@ -23,7 +23,7 @@
  * JSON Validation inspiration: https://github.com/michaeljs1990/val/blob/master/val.go
  * JSON Related Help at https://github.com/DisposaBoy/JsonConfigReader, https://golang.org/pkg/encoding/json/, https://blog.golang.org/json-and-go
  * Anything that can't be found will be saved to the JSON objects with empty values for the specified types
-
+ * We'll use Glide to manage dependencies: https://github.com/Masterminds/glide
 
 # TESTS:
  * Test multiple sections with the same name in config JSON file
