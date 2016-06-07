@@ -84,8 +84,8 @@ func (monitor *SimultaneousCalls) Run() {
 
 								log.LogS("INFO", "Executing e-mail action")
 
-								//body := fmt.Sprintf("Found:\n\n%v", hits)
-								body := fmt.Sprintf("Test!")
+								body := fmt.Sprintf("Found:\n\n%v", numberOfCalls)
+								//body := fmt.Sprintf("Test!")
 
 								email := gmail.Compose("Fraudion ALERT: Dangerous Destinations!", fmt.Sprintf("\n\n%s", body))
 								email.From = config.Loaded.Actions.Email.Username
