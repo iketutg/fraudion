@@ -22,6 +22,8 @@ var configSchema = v.Object(
 		v.ObjKV("type", v.Or(v.String(v.StrIs("*asterisk")))),
 		v.ObjKV("version", v.Optional(v.String())),
 		v.ObjKV("cdrs_source_name", v.String()),
+		// TODO/Future: Currently this value is hardcoded in softswitches.go
+		v.ObjKV("dial_string", v.Optional(v.String())),
 	)),
 
 	v.ObjKV("cdrs_sources", v.Object(
@@ -111,9 +113,12 @@ var configSchema = v.Object(
 	v.ObjKV("data_groups", v.Optional(v.Object(
 		v.ObjKeys(v.String()),
 		v.ObjValues(v.Object(
-			v.ObjKV("phone_number", v.Optional(v.String())),  // TODO: Validate a Phone Number
-			v.ObjKV("email_address", v.Optional(v.String())), // TODO: Validate an e-mail Address
-			v.ObjKV("http_url", v.Optional(v.String())),      // TODO: Validate an URL
+			// TODO/Future: Validate a Phone Number
+			v.ObjKV("phone_number", v.Optional(v.String())),
+			// TODO/Future: Validate an e-mail Address
+			v.ObjKV("email_address", v.Optional(v.String())),
+			// TODO/Future: Validate an URL
+			v.ObjKV("http_url", v.Optional(v.String())),
 			v.ObjKV("http_method", v.Optional(v.Or(v.String(v.StrIs("POST")), v.String(v.StrIs("GET"))))),
 			v.ObjKV("http_parameters", v.Optional(v.Object(
 				v.ObjKeys(v.String()),
@@ -143,7 +148,7 @@ func validateWithShema(data interface{}, schema v.Validator) error {
 		return nil
 	}
 
-	return fmt.Errorf("Failed Validation at %s with error %s.\n", path, err)
+	return fmt.Errorf("failed validation at %s with error %s\n", path, err)
 
 }
 
@@ -167,7 +172,7 @@ func validatorParseableDuration(data interface{}) (path string, err error) {
 
 func validatorParseableDurationOrInt(data interface{}) (path string, err error) {
 
-	path = "validatorCompilableRegex"
+	path = "validatorParseableDurationOrInt"
 
 	validate, ok := data.(string)
 	if !ok {

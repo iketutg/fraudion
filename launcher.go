@@ -22,7 +22,8 @@ const (
 	constDefaultConfigDir      = "."
 	constDefaultConfigFilename = "fraudion.json"
 	constDefaultLogDir         = "."
-	constDefaultLogFile        = "fraudion.log" // TODO: Should we keep the system defaulting to STDOUT or use this value?
+	// TODO: Should we keep the system defaulting to STDOUT or use this value?
+	constDefaultLogFile = "fraudion.log"
 )
 
 var (
@@ -53,8 +54,7 @@ func main() {
 
 	log.LogS("INFO", "Setting up the Log file \""+logFileFullName+"\"...")
 
-	logFile, err := os.OpenFile(logFileFullName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	if err != nil {
+	if logFile, err := os.OpenFile(logFileFullName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600); err != nil {
 		log.LogO("ERROR", "Can't proceed. :( There was an Error opening/creating the Log file \""+logFileFullName+"\" ("+err.Error()+").", marlog.OptionFatal)
 	} else {
 
@@ -69,11 +69,13 @@ func main() {
 
 	}
 
+	// * Config Loading
 	configFileFullName := filepath.Join(*argCLIConfigIn, *argCLIConfigFilename)
 
 	log.LogS("INFO", "Setting up Config loading from config file \""+configFileFullName+"\"...")
 
-	if err := config.Load(configFileFullName, false); err != nil { // NOTE: Puts Verified configurations in config.Loaded
+	// NOTE: If all goes well this puts Parsed/Verified configurations in config.Loaded
+	if err := config.Load(configFileFullName); err != nil {
 		log.LogO("ERROR", "Can't proceed. :( There was an error loading configurations from \""+configFileFullName+"\" ("+err.Error()+").", marlog.OptionFatal)
 	}
 
@@ -89,7 +91,8 @@ func main() {
 
 		sourceInfo, found := config.Loaded.CDRsSources[config.Loaded.Softswitch.CDRsSourceName]
 		if found == false {
-			log.LogO("ERROR", "Can't proceed. :( There was an error (could not find CDR Source with name \""+config.Loaded.Softswitch.CDRsSourceName+"\" in Loaded configurations)", marlog.OptionFatal) // TODO: This should not happen in the future because it's going to be validated in the configuration parsing/loading phase
+			// TODO: This should not happen in the future because it's going to be validated in the configuration parsing/loading phase
+			log.LogO("ERROR", "Can't proceed. :( There was an error (could not find CDR Source with name \""+config.Loaded.Softswitch.CDRsSourceName+"\" in Loaded configurations)", marlog.OptionFatal)
 		}
 
 		switch sourceInfo["type"] {
@@ -111,7 +114,8 @@ func main() {
 			newSoftswitch.CDRsSource = newSource
 
 		default:
-			log.LogO("ERROR", "Can't proceed. :( There was an Error (unknown CDR Source type \""+sourceInfo["type"]+"\" configured)", marlog.OptionFatal) // TODO: This should not happen in the future because it's going to be validated in the configuration parsing/loading phase
+			// TODO: This should not happen in the future because it's going to be validated in the configuration parsing/loading phase
+			log.LogO("ERROR", "Can't proceed. :( There was an Error (unknown CDR Source type \""+sourceInfo["type"]+"\" configured)", marlog.OptionFatal)
 		}
 
 		// TODO: Config Actions Chains/Actions/DataGroups here?
@@ -122,7 +126,8 @@ func main() {
 		softswitches.Monitored = newSoftswitch
 
 	default:
-		log.LogO("ERROR", "Can't proceed. :( There was an Error (unknown Softswitch type \""+config.Loaded.Softswitch.Type+"\" configured)", marlog.OptionFatal) // TODO: This should not happen in the future because it's going to be validated in the configuration parsing/loading phase
+		// TODO: This should not happen in the future because it's going to be validated in the configuration parsing/loading phase
+		log.LogO("ERROR", "Can't proceed. :( There was an Error (unknown Softswitch type \""+config.Loaded.Softswitch.Type+"\" configured)", marlog.OptionFatal)
 	}
 
 	//result, err := softswitches.Monitored.GetCurrentActiveCalls(config.Loaded.Monitors.SimultaneousCalls.MinimumNumberLength)

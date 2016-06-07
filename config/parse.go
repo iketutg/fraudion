@@ -19,6 +19,7 @@ func parseFromFile(configFile *os.File) error {
 
 	// NOTE: Really? In the end it was only one line of code?
 	if err := json.NewDecoder(JsonConfigReader.New(configFile)).Decode(parsed); err != nil {
+		// NOTE: Remove anything that ended up in this variable (parsed) inspite of the failure in the parsing...
 		parsed = nil
 		return err
 	}
@@ -43,9 +44,8 @@ type softswitchJSON struct {
 	Type           string
 	Version        string
 	CDRsSourceName string `json:"cdrs_source_name"`
+	DialString     string `json:"dial_string"`
 }
-
-//type cdrsSources map[string]map[string]string // TODO: Moved to the load.go file
 
 type monitorsJSON struct {
 	SimultaneousCalls     *monitorSimultaneousCallsJSON     `json:"simultaneous_calls"`
@@ -110,22 +110,3 @@ type actionEmailJSON struct {
 type actionLocalCommandsJSON struct {
 	actionBaseJSON
 }
-
-// type actionChains map[string][]actionChainAction  // TODO: Moved to the load.go file
-
-// type actionChainAction struct {  // TODO: Moved to the load.go file
-// 	ActionName     string   `json:"action"`
-// 	DataGroupNames []string `json:"data_groups"`
-// }
-
-// type dataGroups map[string]dataGroup  // TODO: Moved to the load.go file
-
-// type dataGroup struct {  // TODO: Moved to the load.go file
-// 	PhoneNumber      string            `json:"phone_number"`
-// 	EmailAddress     string            `json:"data_groups"`
-// 	HTTPURL          string            `json:"http_url"`
-// 	HTTPMethod       string            `json:"http_method"`
-// 	HTTPParameters   map[string]string `json:"data_groups"`
-// 	CommandName      string            `json:"command_name"`
-// 	CommandArguments string            `json:"command_arguments"`
-// }

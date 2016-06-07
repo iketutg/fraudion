@@ -9,46 +9,38 @@ import (
 	"github.com/andmar/marlog"
 )
 
-const (
-	defaultExecuteInterval     = "5m"
-	defaultHitThreshold        = 5
-	defaultMinimumNumberLength = 5
-	defaultDataGroupName       = "*default"
-	defaultActionChainName     = "*default"
-)
-
+// Loaded ...
 var Loaded *loadedValues
 
-func Load(configFileFullName string, validateOnly bool) error {
+// Load ...
+func Load(configFileFullName string) error {
 
 	log := marlog.MarLog
 
-	log.LogS("INFO", "Preparing configuration loading...")
-
+	log.LogS("INFO", "Opening configuration file for reading...")
 	configFile, err := os.Open(configFileFullName)
 	if err != nil {
 		return err
 	}
 	defer configFile.Close()
 
+	log.LogS("INFO", "Validating configuration format in file...")
 	if err := validateFromFile(configFile); err != nil {
 		return err
 	}
 
 	log.LogS("INFO", "File contents passed Validation.")
 
-	if validateOnly == true {
-		return nil
-	}
-
+	log.LogS("INFO", "Parsing configuration...")
 	if err := parseFromFile(configFile); err != nil {
-		parsed = nil
 		return err
 	}
 
 	log.LogS("INFO", "File Parsed.")
 
+	log.LogS("INFO", "Loading configuration...")
 	if err := loadFromParsed(); err != nil {
+		// NOTE: Remove anything that ended up in this variable inspite of the failure in the loading...
 		Loaded = nil
 		return err
 	}
@@ -63,14 +55,16 @@ func loadFromParsed() error {
 
 	Loaded = new(loadedValues)
 
-	// General Section
+	// * General Section
+	// ...
 
-	// Softswitch Section
+	// * Softswitch Section
 	Loaded.Softswitch.Type = parsed.Softswitch.Type
 	Loaded.Softswitch.Version = parsed.Softswitch.Version
 	Loaded.Softswitch.CDRsSourceName = parsed.Softswitch.CDRsSourceName
+	Loaded.Softswitch.DialString = parsed.Softswitch.DialString
 
-	// CDRs Sources
+	// * CDRs Sources
 	// NOTE: Source configured for the Softswitch exists?
 	exists := false
 	for sourceName := range *parsed.CDRsSources {
@@ -81,12 +75,12 @@ func loadFromParsed() error {
 	}
 
 	if exists == false {
-		return fmt.Errorf("CDR Source Information for Softswitch is not configured")
+		return fmt.Errorf("CDR source information for softswitch is not configured")
 	}
 
 	Loaded.CDRsSources = *parsed.CDRsSources
 
-	// Monitors
+	// * Monitors
 	if parsed.Monitors.SimultaneousCalls == nil {
 		Loaded.Monitors.SimultaneousCalls.Enabled = false
 	} else {
@@ -223,7 +217,7 @@ func loadFromParsed() error {
 		Loaded.Monitors.SmallDurationCalls.DurationThreshold = durationThreshold
 	}
 
-	// Actions
+	// * Actions
 	if parsed.Actions.Email == nil {
 		Loaded.Actions.Email.Enabled = false
 	} else {
@@ -242,7 +236,7 @@ func loadFromParsed() error {
 		Loaded.Actions.LocalCommands.Recurrent = parsed.Actions.LocalCommands.Recurrent
 	}
 
-	// Action Chains
+	// * Action Chains
 	// NOTE: Action Chains configured for the Monitors exist?
 	if Loaded.Monitors.DangerousDestinations.Enabled == true {
 		existsForDangerousDestinations := false
@@ -292,7 +286,7 @@ func loadFromParsed() error {
 		}
 	}
 
-	// Action Chains
+	// * Action Chains
 	Loaded.ActionChains = *parsed.ActionChains
 	// NOTE: All Actions in Chains are enabled?
 	allEnabled := true
@@ -320,7 +314,7 @@ func loadFromParsed() error {
 		return fmt.Errorf("some configured action in chain is not enabled")
 	}
 
-	// Data Groups
+	// * Data Groups
 	Loaded.DataGroups = *parsed.DataGroups
 	// NOTE: All DataGroups used in Chains have the information for the specified Action?
 	for _, chain := range *parsed.ActionChains {
@@ -353,23 +347,6 @@ func loadFromParsed() error {
 
 	}
 
-	fmt.Println("\nParsed Configurations:")
-	fmt.Println(parsed)
-	fmt.Println(parsed.General)
-	fmt.Println(parsed.Softswitch)
-	fmt.Println(parsed.CDRsSources)
-	fmt.Println(parsed.Monitors.DangerousDestinations, parsed.Monitors.ExpectedDestinations, parsed.Monitors.SimultaneousCalls, parsed.Monitors.SmallDurationCalls)
-	fmt.Println(parsed.Actions.Email, parsed.Actions.LocalCommands)
-	fmt.Println(parsed.ActionChains)
-	fmt.Println(parsed.DataGroups)
-	fmt.Println()
-
-	fmt.Println("*\n\n*")
-
-	fmt.Println("\nParsed Configurations:")
-	fmt.Println(Loaded)
-	fmt.Println()
-
 	return nil
 
 }
@@ -390,6 +367,7 @@ type softswitch struct {
 	Type           string
 	Version        string
 	CDRsSourceName string
+	DialString     string
 }
 
 type cdrsSources map[string]map[string]string
@@ -409,10 +387,12 @@ type monitorBase struct {
 	ActionChainName     string
 }
 
+// MonitorSimultaneousCalls ...
 type MonitorSimultaneousCalls struct {
 	monitorBase
 }
 
+// MonitorDangerousDestinations ...
 type MonitorDangerousDestinations struct {
 	monitorBase
 	ConsiderCDRsFromLast time.Duration
@@ -421,6 +401,7 @@ type MonitorDangerousDestinations struct {
 	IgnoreRegex          string
 }
 
+// MonitorExpectedDestinations ...
 type MonitorExpectedDestinations struct {
 	monitorBase
 	ConsiderCDRsFromLast time.Duration
@@ -429,6 +410,7 @@ type MonitorExpectedDestinations struct {
 	IgnoreRegex          string
 }
 
+// MonitorSmallCallDurations ...
 type MonitorSmallCallDurations struct {
 	monitorBase
 	ConsiderCDRsFromLast time.Duration
