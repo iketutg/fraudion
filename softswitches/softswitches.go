@@ -52,6 +52,8 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 	switch asterisk.CDRsSource.(type) {
 	case *CDRsSourceDatabase:
 
+		log.LogS("DEBUG", "CDRs Source is Database")
+
 		cdrsSource, ok := asterisk.CDRsSource.(*CDRsSourceDatabase)
 		if ok == false {
 			return nil, fmt.Errorf("could not convert CDRs Source to the appropriate type")
@@ -66,6 +68,7 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 		// TODO: The Query format should depend on DBMS?
 		rows, err := cdrsSource.GetConnections().Query(fmt.Sprintf("SELECT * FROM cdr WHERE calldate >= DATE_SUB(CURDATE(), INTERVAL %v HOUR) ORDER BY calldate DESC;", uint32(considerCDRsFromLast.Hours())))
 		if err != nil {
+			log.LogS("ERROR", "Could not query the database")
 			return nil, err
 		}
 
@@ -78,6 +81,7 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 
 			err := rows.Scan(&calldate, &clid, &src, &dst, &dcontext, &channel, &dstchannel, &lastapp, &lastdata, &duration, &billsec, &disposition, &amaflags, &accountcode, &uniqueid, &userfield)
 			if err != nil {
+				log.LogS("ERROR", "Could not bring query results to variables")
 				return nil, err
 			}
 
@@ -94,6 +98,7 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 
 			prefix, matched, err := matches(dialedNumber)
 			if err != nil {
+				log.LogS("ERROR", "Number not suitable")
 				return nil, err
 			}
 			if matched == true {
@@ -120,6 +125,8 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 // GetCurrentActiveCalls ...
 func (asterisk *Asterisk) GetCurrentActiveCalls(minimumNumberLength uint32) (uint32, error) {
 
+	log := marlog.MarLog
+
 	// TODO: Make this depend on the Asterisk version because command format and result parsing may vary!
 
 	command := exec.Command("asterisk", "-rx", "core show channels concise")
@@ -127,17 +134,19 @@ func (asterisk *Asterisk) GetCurrentActiveCalls(minimumNumberLength uint32) (uin
 
 	output, err := command.Output()
 	if err != nil {
+		log.LogS("ERROR: ", err.Error())
 		return 0, err
 	}
 
 	numberOfCalls := 0
+	numberOfLines := 0
 
 	scanner := bufio.NewScanner(bytes.NewReader(output))
 	for scanner.Scan() {
 
-		lineItems := strings.Split(scanner.Text(), "!")
+		numberOfLines++
 
-		fmt.Println("Line Items: ", lineItems)
+		lineItems := strings.Split(scanner.Text(), "!")
 
 		if len(lineItems) == 14 {
 
@@ -151,15 +160,19 @@ func (asterisk *Asterisk) GetCurrentActiveCalls(minimumNumberLength uint32) (uin
 
 				if uint32(len(dialedNumber)) > minimumNumberLength {
 					numberOfCalls++
+				} else {
+					log.LogS("DEBUG", "Number \""+dialedNumber+"\" is ignored due to length")
 				}
 
 			}
 
 		} else {
-			// TODO: Consider logging this!
+			log.LogS("DEBUG", "Line has weird item count: "+string(len(lineItems)))
 		}
 
 	}
+
+	log.LogS("DEBUG", "Analized "+string(numberOfLines)+" lines and found "+string(numberOfCalls)+" suitable calls")
 
 	return uint32(numberOfCalls), nil
 
