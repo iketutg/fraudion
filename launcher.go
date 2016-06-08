@@ -89,10 +89,9 @@ func main() {
 
 			if err := config.ValidateFromFile(configFile); err != nil {
 				log.LogS("INFO", "Config file FAILED validation: "+err.Error())
+			} else {
+				log.LogS("INFO", "Config file PASSED validation. :)")
 			}
-
-			log.LogS("INFO", "Config file PASSED validation. :)")
-
 		}
 
 		os.Exit(0)
