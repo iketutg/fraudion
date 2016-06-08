@@ -24,7 +24,8 @@ const (
 )
 
 const (
-	asteriskDialString = "(?:SIP|DAHDI)/[^@&]+/([0-9]+)" // NOTE: Currently supported dial string format
+	// NOTE: Currently supported dial string format for Asterisk
+	asteriskDialString = "(?:SIP|DAHDI)/[^@&]+/([0-9]+)"
 )
 
 // Monitored ...
@@ -44,7 +45,7 @@ type Asterisk struct {
 }
 
 // GetHits ...
-func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), considerCDRsFromLast time.Duration) (map[string]*Hits, error) { // TODO: Change this to accept the monitor that is monitoring the Softswitch?
+func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), considerCDRsFromLast time.Duration) (map[string]*Hits, error) {
 
 	log := marlog.MarLog
 
@@ -62,7 +63,8 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 
 		log.LogS("DEBUG", "Database connection is A-Ok!")
 
-		rows, err := cdrsSource.GetConnections().Query(fmt.Sprintf("SELECT * FROM cdr WHERE calldate >= DATE_SUB(CURDATE(), INTERVAL %v HOUR) ORDER BY calldate DESC;", uint32(considerCDRsFromLast.Hours()))) // TODO: The Query format should depend on DBMS?
+		// TODO: The Query format should depend on DBMS?
+		rows, err := cdrsSource.GetConnections().Query(fmt.Sprintf("SELECT * FROM cdr WHERE calldate >= DATE_SUB(CURDATE(), INTERVAL %v HOUR) ORDER BY calldate DESC;", uint32(considerCDRsFromLast.Hours())))
 		if err != nil {
 			return nil, err
 		}
@@ -83,7 +85,8 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 
 			matchesDialString := regexp.MustCompile(asteriskDialString)
 			matchedString := matchesDialString.FindString(lastdata)
-			if lastapp != "Dial" || matchedString == "" { // NOTE: Ignore if "lastapp" is not Dial and "lastdata" does not contain an expected dial string
+			// NOTE: Ignore if "lastapp" is not Dial and "lastdata" does not contain an expected dial string
+			if lastapp != "Dial" || matchedString == "" {
 				continue
 			}
 
@@ -95,7 +98,8 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 			}
 			if matched == true {
 
-				if _, found := result[prefix]; found != true { // NOTE: If the prefix doesn't have matches already, create a new hits object ELSE add to the count for that prefix
+				// NOTE: If the prefix doesn't have matches already, create a new hits object ELSE add to the count for that prefix
+				if _, found := result[prefix]; found != true {
 					result[prefix] = new(Hits)
 				}
 				result[prefix].NumberOfHits++
@@ -118,7 +122,7 @@ func (asterisk *Asterisk) GetCurrentActiveCalls(minimumNumberLength uint32) (uin
 
 	// TODO: Make this depend on the Asterisk version because command format and result parsing may vary!
 
-	command := exec.Command("asterisk", "-rx 'core show channels concise'")
+	command := exec.Command("asterisk", "-rx", "core show channels concise")
 	//command := exec.Command("cat", "asterisk.output") // NOTE: This is a just a test code to test Asterisk output without a local Asterisk via the non-commited text file: asterisk.output where one can put example output
 
 	output, err := command.Output()
@@ -133,16 +137,26 @@ func (asterisk *Asterisk) GetCurrentActiveCalls(minimumNumberLength uint32) (uin
 
 		lineItems := strings.Split(scanner.Text(), "!")
 
-		matchesDialString := regexp.MustCompile(asteriskDialString)
-		matchedString := matchesDialString.FindString(lineItems[6])
+		fmt.Println("Line Items: ", lineItems)
 
-		if lineItems[5] == "Dial" || matchedString != "" { // NOTE: Ignore if "lastapp" is not Dial and "lastdata" does not contain an expected dial string
+		if len(lineItems) == 14 {
 
-			dialedNumber := matchesDialString.FindStringSubmatch(lineItems[6])[1]
+			matchesDialString := regexp.MustCompile(asteriskDialString)
+			matchedString := matchesDialString.FindString(lineItems[6])
 
-			if uint32(len(dialedNumber)) > minimumNumberLength {
-				numberOfCalls++
+			// NOTE: Ignore if "lastapp" is not Dial and "lastdata" does not contain an expected dial string
+			if lineItems[5] == "Dial" || matchedString != "" {
+
+				dialedNumber := matchesDialString.FindStringSubmatch(lineItems[6])[1]
+
+				if uint32(len(dialedNumber)) > minimumNumberLength {
+					numberOfCalls++
+				}
+
 			}
+
+		} else {
+			// TODO: Consider logging this!
 		}
 
 	}
@@ -176,7 +190,7 @@ func (cdrSource *CDRsSourceDatabase) Connect() error {
 
 	connections, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(localhost:3306)/%s?allowOldPasswords=1", cdrSource.UserName, cdrSource.UserPassword, cdrSource.DatabaseName))
 	if err != nil {
-		return fmt.Errorf("Could not create Database connections")
+		return fmt.Errorf("could not create Database connections (" + err.Error() + ")")
 	}
 
 	cdrSource.connections = connections
