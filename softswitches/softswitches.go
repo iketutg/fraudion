@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -106,6 +107,7 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 				// NOTE: If the prefix doesn't have matches already, create a new hits object ELSE add to the count for that prefix
 				if _, found := result[prefix]; found != true {
 					result[prefix] = new(Hits)
+					result[prefix].Prefix = prefix
 				}
 				result[prefix].NumberOfHits++
 				result[prefix].Destinations = append(result[prefix].Destinations, dialedNumber)
@@ -167,12 +169,12 @@ func (asterisk *Asterisk) GetCurrentActiveCalls(minimumNumberLength uint32) (uin
 			}
 
 		} else {
-			log.LogS("DEBUG", "Line has weird item count: "+string(len(lineItems)))
+			log.LogS("DEBUG", "Line has weird item count: "+strconv.Itoa(len(lineItems)))
 		}
 
 	}
 
-	log.LogS("DEBUG", "Analized "+string(numberOfLines)+" lines and found "+string(numberOfCalls)+" suitable calls")
+	log.LogS("DEBUG", "Analized "+strconv.Itoa(numberOfLines)+" lines and found "+strconv.Itoa(numberOfCalls)+" suitable calls")
 
 	return uint32(numberOfCalls), nil
 
@@ -221,6 +223,7 @@ func (cdrSource CDRsSourceDatabase) GetConnections() *sql.DB {
 
 // Hits ...
 type Hits struct {
+	Prefix       string
 	NumberOfHits uint32
 	Destinations []string
 }
