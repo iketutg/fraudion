@@ -29,7 +29,7 @@ func (monitor *SimultaneousCalls) Run() {
 
 		numberOfCalls, err := monitor.Softswitch.GetCurrentActiveCalls(monitor.Config.MinimumNumberLength)
 		if err != nil {
-			log.LogS("ERROR", err.Error())
+			log.LogS("ERROR: ", err.Error())
 		} else {
 
 			// NOTE: This block has to be here because we reset the value of monitor.State.RunMode below, this catches state changes
@@ -38,7 +38,13 @@ func (monitor *SimultaneousCalls) Run() {
 				skipNonRecurrentActions = true
 			}
 
+			// NOTE: Resets RunMode in each Tick so that the System can detect when it's out of an alarm situation
+			monitor.State.RunMode = RunModeNormal
+
+			log.LogS("INFO", "Checking number of Simultaneous Calls...")
+
 			if numberOfCalls > monitor.Config.HitThreshold {
+				log.LogS("INFO", "Number above threshold!!")
 				monitor.State.RunMode = RunModeInAlarm
 			}
 
@@ -47,17 +53,17 @@ func (monitor *SimultaneousCalls) Run() {
 			case RunModeInWarning:
 			case RunModeInAlarm:
 				runModeString = "Alarm/Warning"
-				log.LogS("INFO", "System is in Alarm/Warning")
+				log.LogS("DEBUG", "System is in Alarm/Warning")
 			default:
 				runModeString = "Normal"
-				log.LogS("INFO", "System detected nothing. :)")
+				log.LogS("DEBUG", "System detected nothing. :)")
 			}
 
-			log.LogS("DEBUG", "RunMode after Simultaneous Calls check is "+runModeString)
+			log.LogS("INFO", "RunMode after Simultaneous Calls check is "+runModeString)
 
 			if monitor.State.RunMode != RunModeNormal {
 
-				log.LogS("INFO", "Will execute action chain")
+				log.LogS("INFO", "Will execute action chain...")
 
 				actionChainName := monitor.Config.ActionChainName
 				if actionChainName == "" {
@@ -87,7 +93,7 @@ func (monitor *SimultaneousCalls) Run() {
 								body := fmt.Sprintf("Found:\n\n%v", numberOfCalls)
 								//body := fmt.Sprintf("Test!")
 
-								email := gmail.Compose("Fraudion ALERT: Dangerous Destinations!", fmt.Sprintf("\n\n%s", body))
+								email := gmail.Compose("Fraudion ALERT: Simultaneous Calls!", fmt.Sprintf("\n\n%s", body))
 								email.From = config.Loaded.Actions.Email.Username
 								email.Password = config.Loaded.Actions.Email.Password
 								email.ContentType = "text/html; charset=utf-8"

@@ -61,11 +61,11 @@ func (monitor *DangerousDestinations) Run() {
 
 		log.LogS("INFO", "Monitor DangerousDestinations ticked at "+tickTime.String())
 
-		log.LogS("DEBUG", "Querying Softswitch for Hits from the past \""+monitor.Config.ConsiderCDRsFromLast.String()+"\"...")
+		log.LogS("DEBUG", "Querying Softswitch for Hits (matches in CDRs) from the past \""+monitor.Config.ConsiderCDRsFromLast.String()+"\"...")
 
 		hits, err := monitor.Softswitch.GetHits(matches, monitor.Config.ConsiderCDRsFromLast)
 		if err != nil {
-			log.LogS("ERROR", err.Error())
+			log.LogS("ERROR: ", err.Error())
 		} else {
 
 			// NOTE: This block has to be here because we reset the value of monitor.State.RunMode below, this catches state changes
@@ -74,14 +74,15 @@ func (monitor *DangerousDestinations) Run() {
 				skipNonRecurrentActions = true
 			}
 
-			monitor.State.RunMode = RunModeNormal // NOTE: Resets RunMode in each Tick so that the System can detect when it's out of an alarm situation
+			// NOTE: Resets RunMode in each Tick so that the System can detect when it's out of an alarm situation
+			monitor.State.RunMode = RunModeNormal
 
-			log.LogS("INFO", "Checking Hit values...")
+			log.LogS("INFO", "Checking Hits found...")
 
 			for _, v := range hits {
 
 				if v.NumberOfHits > monitor.Config.HitThreshold {
-					// TODO: Log something here
+					log.LogS("INFO", "Hit found!!")
 					monitor.State.RunMode = RunModeInAlarm
 					break
 				}
@@ -93,17 +94,17 @@ func (monitor *DangerousDestinations) Run() {
 			case RunModeInWarning:
 			case RunModeInAlarm:
 				runModeString = "Alarm/Warning"
-				log.LogS("INFO", "System is in Alarm/Warning")
+				log.LogS("DEBUG", "System is in Alarm/Warning")
 			default:
 				runModeString = "Normal"
-				log.LogS("INFO", "System detected nothing. :)")
+				log.LogS("DEBUG", "System detected nothing. :)")
 			}
 
-			log.LogS("DEBUG", "RunMode after Hits check is "+runModeString)
+			log.LogS("INFO", "RunMode after Hits check is "+runModeString)
 
 			if monitor.State.RunMode != RunModeNormal {
 
-				log.LogS("INFO", "Will execute action chain")
+				log.LogS("INFO", "Will execute action chain...")
 
 				actionChainName := monitor.Config.ActionChainName
 				if actionChainName == "" {
