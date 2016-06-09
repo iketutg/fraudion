@@ -3,6 +3,7 @@ package monitors
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -82,7 +83,7 @@ func (monitor *DangerousDestinations) Run() {
 			for _, v := range hits {
 
 				if v.NumberOfHits > monitor.Config.HitThreshold {
-					log.LogS("INFO", "Hit found!!")
+					log.LogS("INFO", "Hits above threshold \""+strconv.Itoa(int(monitor.Config.HitThreshold))+"\"on prefix "+v.Prefix+" found: "+fmt.Sprintf("%v", v.Destinations)+"!!")
 					monitor.State.RunMode = RunModeInAlarm
 					break
 				}

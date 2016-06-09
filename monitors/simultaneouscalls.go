@@ -2,6 +2,7 @@ package monitors
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"os/exec"
@@ -41,10 +42,10 @@ func (monitor *SimultaneousCalls) Run() {
 			// NOTE: Resets RunMode in each Tick so that the System can detect when it's out of an alarm situation
 			monitor.State.RunMode = RunModeNormal
 
-			log.LogS("INFO", "Checking number of Simultaneous Calls...")
+			log.LogS("INFO", "Current active Calls "+strconv.Itoa(int(numberOfCalls)))
 
 			if numberOfCalls > monitor.Config.HitThreshold {
-				log.LogS("INFO", "Number above threshold!!")
+				log.LogS("INFO", "Number above threshold \""+strconv.Itoa(int(monitor.Config.HitThreshold))+"\"!!")
 				monitor.State.RunMode = RunModeInAlarm
 			}
 
