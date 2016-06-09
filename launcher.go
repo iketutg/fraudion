@@ -68,6 +68,9 @@ func main() {
 		log.AddOuputHandles("ERROR", "MAINFILE")
 		log.LogS("INFO", "Started logging ERROR messages to \""+logFileFullName+"\"")
 
+		log.AddOuputHandles("VERBOSE", "MAINFILE")
+		log.LogS("VERBOSE", "Started logging DEBUG messages to \""+logFileFullName+"\"")
+
 	}
 
 	// * Config Loading
