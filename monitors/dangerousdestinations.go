@@ -78,7 +78,7 @@ func (monitor *DangerousDestinations) Run() {
 			// NOTE: Resets RunMode in each Tick so that the System can detect when it's out of an alarm situation
 			monitor.State.RunMode = RunModeNormal
 
-			log.LogS("INFO", "Checking Hits found...")
+			log.LogS("INFO", "Checking if some Hits are above threshold \""+strconv.Itoa(int(monitor.Config.HitThreshold))+"\"")
 
 			for _, v := range hits {
 
