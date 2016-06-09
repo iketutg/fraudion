@@ -75,6 +75,10 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 
 		result := make(map[string]*Hits)
 
+		numberOfCDRsTotal := 0
+		numberOfCDRsSuitable := 0
+		numberOfCDRsMatched := 0
+
 		for rows.Next() {
 
 			var calldate, clid, src, dst, dcontext, channel, dstchannel, lastapp, lastdata, disposition, accountcode, uniqueid, userfield string
@@ -86,6 +90,8 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 				return nil, err
 			}
 
+			numberOfCDRsTotal++
+
 			//fmt.Println(calldate, clid, src, dst, dcontext, channel, dstchannel, lastapp, lastdata, duration, billsec, disposition, amaflags, accountcode, uniqueid, userfield)
 
 			matchesDialString := regexp.MustCompile(asteriskDialString)
@@ -95,6 +101,8 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 				continue
 			}
 
+			numberOfCDRsSuitable++
+
 			dialedNumber := matchesDialString.FindStringSubmatch(lastdata)[1]
 
 			prefix, matched, err := matches(dialedNumber)
@@ -103,6 +111,8 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 				return nil, err
 			}
 			if matched == true {
+
+				numberOfCDRsMatched++
 
 				// NOTE: If the prefix doesn't have matches already, create a new hits object ELSE add to the count for that prefix
 				if _, found := result[prefix]; found != true {
@@ -115,6 +125,8 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 			}
 
 		}
+
+		log.LogS("INFO", "Results: Suitable: "+strconv.Itoa(numberOfCDRsSuitable)+", Matched: "+strconv.Itoa(numberOfCDRsMatched)+", Total: "+strconv.Itoa(numberOfCDRsTotal))
 
 		return result, nil
 
