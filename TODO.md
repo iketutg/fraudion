@@ -7,3 +7,4 @@
  * See how to add configuration specific to the code in a release to that release "package", godoc.org does not seem to support it
  * Make logging Stamps configurable via the General section of the config file OR via command line arguments which seems to be the best option because config is parsed after the logging is initiated
  * See which information we want to have in each debug stamp, INFO/DEBUG in Monitores are not really correct as they are now
+ * Concept of exitChan that makes it so that Monitors can trigger the end of main process

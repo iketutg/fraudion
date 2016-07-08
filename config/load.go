@@ -61,24 +61,23 @@ func loadFromParsed() error {
 	// * Softswitch Section
 	Loaded.Softswitch.Type = parsed.Softswitch.Type
 	Loaded.Softswitch.Version = parsed.Softswitch.Version
-	Loaded.Softswitch.CDRsSourceName = parsed.Softswitch.CDRsSourceName
-	Loaded.Softswitch.DialString = parsed.Softswitch.DialString
+	Loaded.Softswitch.CDRsSource = *parsed.Softswitch.CDRsSource
 
+	// TODO: This is to be removed!
 	// * CDRs Sources
 	// NOTE: Source configured for the Softswitch exists?
-	exists := false
-	for sourceName := range *parsed.CDRsSources {
-		if Loaded.Softswitch.CDRsSourceName == sourceName {
-			exists = true
-			break
-		}
-	}
-
-	if exists == false {
-		return fmt.Errorf("CDR source information for softswitch is not configured")
-	}
-
-	Loaded.CDRsSources = *parsed.CDRsSources
+	// exists := false
+	// for sourceName := range *parsed.CDRsSource {
+	// 	if Loaded.Softswitch.CDRsSourceName == sourceName {
+	// 		exists = true
+	// 		break
+	// 	}
+	// }
+	//
+	// if exists == false {
+	// 	return fmt.Errorf("CDR source information for softswitch is not configured")
+	// }
+	//Loaded.CDRsSource = *parsed.CDRsSource
 
 	// * Monitors
 	if parsed.Monitors.SimultaneousCalls == nil {
@@ -354,7 +353,6 @@ func loadFromParsed() error {
 type loadedValues struct {
 	General      general
 	Softswitch   softswitch
-	CDRsSources  cdrsSources
 	Monitors     monitors
 	Actions      actions
 	ActionChains actionChains
@@ -364,13 +362,12 @@ type loadedValues struct {
 type general struct{}
 
 type softswitch struct {
-	Type           string
-	Version        string
-	CDRsSourceName string
-	DialString     string
+	Type       string
+	Version    string
+	CDRsSource cdrsSource
 }
 
-type cdrsSources map[string]map[string]string
+type cdrsSource map[string]string
 
 type monitors struct {
 	SimultaneousCalls     MonitorSimultaneousCalls

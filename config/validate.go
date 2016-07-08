@@ -16,20 +16,15 @@ import (
 
 var configSchema = v.Object(
 
+	// +INFO: https://github.com/gima/govalid
+
 	v.ObjKV("general", v.Optional(v.Object())),
 
 	v.ObjKV("softswitch", v.Object(
-		v.ObjKV("type", v.Or(v.String(v.StrIs("*asterisk")))),
-		v.ObjKV("version", v.Optional(v.String())),
-		v.ObjKV("cdrs_source_name", v.String()),
-		// TODO/Future: Currently this value is hardcoded in softswitches.go
-		v.ObjKV("dial_string", v.Optional(v.String())),
-	)),
-
-	v.ObjKV("cdrs_sources", v.Object(
-		v.ObjKeys(v.String()),
-		v.ObjValues(v.Object(
-			v.ObjKV("type", v.String()),
+		v.ObjKV("type", v.String(v.StrIs("*asterisk"))),
+		v.ObjKV("version", v.String()),
+		v.ObjKV("cdrs_source", v.Object(
+			v.ObjKV("type", v.String(v.StrIs("*database"))),
 			v.ObjKV("dbms", v.String()),
 			v.ObjKV("user_name", v.String()),
 			v.ObjKV("user_password", v.String()),
@@ -38,7 +33,18 @@ var configSchema = v.Object(
 		)),
 	)),
 
-	v.ObjKV("monitors", v.Object(
+	// NOTE: Example of using this lib to make different possible combinations of fields on a section, when "live_calls_data_source" can be freeswitch the options list may be different...
+	// v.ObjKV("live_calls_data_source", v.Or(
+	// 	v.Object(
+	// 		v.ObjKV("type", v.Or(v.String(v.StrIs("*asterisk")))),
+	// 		v.ObjKV("version", v.String())),
+	// 	v.Object(
+	// 		v.ObjKV("type", v.Or(v.String(v.StrIs("*freeswitch")))),
+	// 		v.ObjKV("sversion", v.String()),
+	// 	),
+	// )),
+
+	v.ObjKV("monitors", v.Optional(v.Object(
 		v.ObjKV("simultaneous_calls", v.Object(
 			v.ObjKV("enabled", v.Boolean()),
 			v.ObjKV("execute_interval", v.Function(validatorParseableDuration)),
@@ -83,7 +89,7 @@ var configSchema = v.Object(
 			v.ObjKV("consider_cdrs_from_last", v.Function(validatorParseableDurationOrInt)),
 			v.ObjKV("duration_threshold", v.Function(validatorParseableDuration))),
 		))),
-	),
+	)),
 
 	v.ObjKV("actions", v.Optional(v.Object(
 		v.ObjKV("email", v.Optional(v.Object(

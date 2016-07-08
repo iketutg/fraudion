@@ -95,6 +95,7 @@ func main() {
 			} else {
 				log.LogS("INFO", "Config file PASSED validation. :)")
 			}
+
 		}
 
 		os.Exit(0)
@@ -116,24 +117,19 @@ func main() {
 
 		newSoftswitch := new(softswitches.Asterisk)
 		newSoftswitch.Version = config.Loaded.Softswitch.Version
+		newSoftswitch.CDRsSource = config.Loaded.Softswitch.CDRsSource
 
-		sourceInfo, found := config.Loaded.CDRsSources[config.Loaded.Softswitch.CDRsSourceName]
-		if found == false {
-			// TODO: This should not happen in the future because it's going to be validated in the configuration parsing/loading phase
-			log.LogO("ERROR", "Can't proceed. :( There was an error (could not find CDR Source with name \""+config.Loaded.Softswitch.CDRsSourceName+"\" in Loaded configurations)", marlog.OptionFatal)
-		}
-
-		switch sourceInfo["type"] {
+		switch config.Loaded.Softswitch.CDRsSource["type"] {
 		case softswitches.CDRSourceDatabase:
 
-			log.LogS("DEBUG", "CDRs Source is Database, DBMS \""+sourceInfo["dbms"]+"\"")
+			log.LogS("DEBUG", "CDRs Source is Database, DBMS \""+config.Loaded.Softswitch.CDRsSource["dbms"]+"\"")
 
 			newSource := new(softswitches.CDRsSourceDatabase)
-			newSource.DBMS = sourceInfo["dbms"]
-			newSource.UserName = sourceInfo["user_name"]
-			newSource.UserPassword = sourceInfo["user_password"]
-			newSource.DatabaseName = sourceInfo["database_name"]
-			newSource.TableName = sourceInfo["table_name"]
+			newSource.DBMS = config.Loaded.Softswitch.CDRsSource["dbms"]
+			newSource.UserName = config.Loaded.Softswitch.CDRsSource["user_name"]
+			newSource.UserPassword = config.Loaded.Softswitch.CDRsSource["user_password"]
+			newSource.DatabaseName = config.Loaded.Softswitch.CDRsSource["database_name"]
+			newSource.TableName = config.Loaded.Softswitch.CDRsSource["table_name"]
 
 			if err := newSource.Connect(); err != nil {
 				log.LogO("ERROR", "Can't proceed. :( There was an Error (could not setup the Database connections pool)", marlog.OptionFatal)
@@ -143,7 +139,7 @@ func main() {
 
 		default:
 			// NOTE: This should not happen in the future because it's going to be validated in the configuration parsing/loading phase
-			log.LogO("ERROR", "Can't proceed. :( There was an Error (unknown CDR Source type \""+sourceInfo["type"]+"\" configured)", marlog.OptionFatal)
+			log.LogO("ERROR", "Can't proceed. :( There was an Error (unknown CDR Source type \""+config.Loaded.Softswitch.CDRsSource["type"]+"\" configured)", marlog.OptionFatal)
 		}
 
 		// TODO: Config Actions Chains/Actions/DataGroups here?

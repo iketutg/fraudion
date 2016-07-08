@@ -12,7 +12,7 @@ var parsed *parsedValues
 
 func parseFromFile(configFile *os.File) error {
 
-	// NOTE: Validation reads through the whole file so we need to get back to the beginning.
+	// NOTE: Format Validation reads through the whole file so we need to get back to the beginning.
 	configFile.Seek(0, 0)
 
 	parsed = new(parsedValues)
@@ -31,7 +31,6 @@ func parseFromFile(configFile *os.File) error {
 type parsedValues struct {
 	General      *generalJSON    `json:"general"`
 	Softswitch   *softswitchJSON `json:"softswitch"`
-	CDRsSources  *cdrsSources    `json:"cdrs_sources"`
 	Monitors     *monitorsJSON   `json:"monitors"`
 	Actions      *actionsJSON    `json:"actions"`
 	ActionChains *actionChains   `json:"action_chains"`
@@ -41,10 +40,9 @@ type parsedValues struct {
 type generalJSON struct{}
 
 type softswitchJSON struct {
-	Type           string
-	Version        string
-	CDRsSourceName string `json:"cdrs_source_name"`
-	DialString     string `json:"dial_string"`
+	Type       string
+	Version    string
+	CDRsSource *cdrsSource `json:"cdrs_source"`
 }
 
 type monitorsJSON struct {
