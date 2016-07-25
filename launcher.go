@@ -22,7 +22,7 @@ const (
 	constDefaultConfigDir      = "."
 	constDefaultConfigFilename = "fraudion.json"
 	constDefaultLogDir         = "."
-	// TODO: Should we keep the system defaulting to STDOUT or use this value?
+	// TODO: Should we keep the system defaulting to STDOUT or use this value as we do now?
 	constDefaultLogFile = "fraudion.log"
 )
 
@@ -44,17 +44,20 @@ func main() {
 	log.SetStamp("ERROR", "*STDOUT")
 	log.SetStamp("DEBUG", "*STDOUT")
 	log.SetStamp("INFO", "*STDOUT")
+	log.SetStamp("VERBOSE", "*STDOUT")
 
 	system.State.StartUpTime = time.Now()
 
 	log.LogS("INFO", "Fraudion started at "+system.State.StartUpTime.String())
 	log.LogS("INFO", "Parsing CLI flags...")
+
 	flag.Parse()
 
 	logFileFullName := filepath.Join(*argCLILogTo, *argCLILogFilename)
 
 	log.LogS("INFO", "Setting up the Log file \""+logFileFullName+"\"...")
 
+	// NOTE: Fraudion has to have permission to create the file in the folder it's being executed?
 	if logFile, err := os.OpenFile(logFileFullName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600); err != nil {
 		log.LogO("ERROR", "Can't proceed. :( There was an Error opening/creating the Log file \""+logFileFullName+"\" ("+err.Error()+").", marlog.OptionFatal)
 	} else {
@@ -67,9 +70,8 @@ func main() {
 		log.LogS("INFO", "Started logging DEBUG messages to \""+logFileFullName+"\"")
 		log.AddOuputHandles("ERROR", "MAINFILE")
 		log.LogS("INFO", "Started logging ERROR messages to \""+logFileFullName+"\"")
-
 		log.AddOuputHandles("VERBOSE", "MAINFILE")
-		log.LogS("VERBOSE", "Started logging DEBUG messages to \""+logFileFullName+"\"")
+		log.LogS("VERBOSE", "Started logging VERBOSE messages to \""+logFileFullName+"\"")
 
 	}
 
@@ -99,6 +101,7 @@ func main() {
 		}
 
 		os.Exit(0)
+
 	}
 
 	log.LogS("INFO", "Setting up Config loading from config file \""+configFileFullName+"\"...")
@@ -163,12 +166,14 @@ func main() {
 
 		log.LogS("INFO", "Monitor \"DangerousDestinations\" is Enabled")
 
-		ddMonitor := new(monitors.DangerousDestinations)
-		ddMonitor.Config = &config.Loaded.Monitors.DangerousDestinations
-		ddMonitor.Softswitch = softswitches.Monitored
+		monitor := new(monitors.DangerousDestinations)
+		monitor.Config = &config.Loaded.Monitors.DangerousDestinations
+		monitor.Softswitch = softswitches.Monitored
 
+		monitors.RunActionChain(monitor, false, nil)
+		os.Exit(-1)
 		log.LogS("INFO", "Starting execution of monitor \"DangerousDestinations\"...")
-		go ddMonitor.Run()
+		go monitor.Run()
 
 	}
 
@@ -176,12 +181,12 @@ func main() {
 
 		log.LogS("INFO", "Monitor \"SimultaneousCalls\" is Enabled")
 
-		ddMonitor := new(monitors.SimultaneousCalls)
-		ddMonitor.Config = &config.Loaded.Monitors.SimultaneousCalls
-		ddMonitor.Softswitch = softswitches.Monitored
+		monitor := new(monitors.SimultaneousCalls)
+		monitor.Config = &config.Loaded.Monitors.SimultaneousCalls
+		monitor.Softswitch = softswitches.Monitored
 
 		log.LogS("INFO", "Starting execution of monitor \"SimultaneousCalls\"...")
-		go ddMonitor.Run()
+		go monitor.Run()
 
 	}
 
