@@ -37,7 +37,9 @@ type parsedValues struct {
 	DataGroups   *dataGroups     `json:"data_groups"`
 }
 
-type generalJSON struct{}
+type generalJSON struct {
+	Hostname string
+}
 
 type softswitchJSON struct {
 	Type       string

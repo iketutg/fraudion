@@ -71,7 +71,7 @@ func main() {
 		log.AddOuputHandles("ERROR", "MAINFILE")
 		log.LogS("INFO", "Started logging ERROR messages to \""+logFileFullName+"\"")
 		log.AddOuputHandles("VERBOSE", "MAINFILE")
-		log.LogS("VERBOSE", "Started logging VERBOSE messages to \""+logFileFullName+"\"")
+		log.LogS("INFO", "Started logging VERBOSE messages to \""+logFileFullName+"\"")
 
 	}
 
@@ -160,7 +160,6 @@ func main() {
 	// * Config/Start Monitors
 
 	log.LogS("INFO", "Configuring the monitors...")
-	fmt.Println(config.Loaded)
 
 	if config.Loaded.Monitors.DangerousDestinations.Enabled == true {
 
@@ -170,8 +169,6 @@ func main() {
 		monitor.Config = &config.Loaded.Monitors.DangerousDestinations
 		monitor.Softswitch = softswitches.Monitored
 
-		monitors.RunActionChain(monitor, false, nil)
-		os.Exit(-1)
 		log.LogS("INFO", "Starting execution of monitor \"DangerousDestinations\"...")
 		go monitor.Run()
 

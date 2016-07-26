@@ -56,7 +56,7 @@ func loadFromParsed() error {
 	Loaded = new(loadedValues)
 
 	// * General Section
-	// ...
+	Loaded.General.Hostname = parsed.General.Hostname
 
 	// * Softswitch Section
 	Loaded.Softswitch.Type = parsed.Softswitch.Type
@@ -359,7 +359,9 @@ type loadedValues struct {
 	DataGroups   dataGroups
 }
 
-type general struct{}
+type general struct {
+	Hostname string
+}
 
 type softswitch struct {
 	Type       string

@@ -18,7 +18,9 @@ var configSchema = v.Object(
 
 	// +INFO: https://github.com/gima/govalid
 
-	v.ObjKV("general", v.Optional(v.Object())),
+	v.ObjKV("general", v.Object(
+		v.ObjKV("hostname", v.String(v.StrMin(5))),
+	)),
 
 	v.ObjKV("softswitch", v.Object(
 		v.ObjKV("type", v.String(v.StrIs("*asterisk"))),

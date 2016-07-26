@@ -7,11 +7,7 @@ import (
 	"strings"
 	"time"
 
-	//"os/exec"
-
-	//"github.com/andmar/fraudion/config"
 	"github.com/andmar/marlog"
-	//"github.com/SlyMarbo/gmail"
 )
 
 // Run ...
@@ -106,7 +102,7 @@ func (monitor *DangerousDestinations) Run() {
 
 				log.LogS("INFO", "Will execute action chain...")
 
-				RunActionChain(monitor, skipNonRecurrentActions, make(map[string]string, 0))
+				runActionChain(monitor, skipNonRecurrentActions, make(map[string]string, 0))
 
 			}
 
