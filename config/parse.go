@@ -1,6 +1,8 @@
 package config
 
 import (
+	"bytes"
+	"io"
 	"os"
 
 	"encoding/json"
@@ -20,6 +22,21 @@ func parseFromFile(configFile *os.File) error {
 	// NOTE: Really? In the end it was only one line of code?
 	if err := json.NewDecoder(JsonConfigReader.New(configFile)).Decode(parsed); err != nil {
 		// NOTE: Remove anything that ended up in this variable (parsed) inspite of the failure in the parsing...
+		parsed = nil
+		return err
+	}
+
+	return nil
+
+}
+
+func parseFromURL(reader bytes.Reader) error {
+
+	reader.Seek(0, 0)
+
+	parsed = new(parsedValues)
+
+	if err := json.NewDecoder(JsonConfigReader.New(reader)).Decode(parsed); err != nil {
 		parsed = nil
 		return err
 	}

@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"regexp"
@@ -145,6 +146,20 @@ func ValidateFromFile(configFile *os.File) error {
 	if err := json.NewDecoder(JsonConfigReader.New(configFile)).Decode(&data); err != nil {
 		return err
 	}
+
+	return validateWithShema(data, configSchema)
+
+}
+
+// ValidateFromURL ...
+func ValidateFromURL(reader io.Reader) error {
+
+	var data interface{}
+	if err := json.NewDecoder(JsonConfigReader.New(reader)).Decode(&data); err != nil {
+		return err
+	}
+
+	fmt.Println(data)
 
 	return validateWithShema(data, configSchema)
 

@@ -2,9 +2,12 @@ package main
 
 import (
 	"flag"
+	//"fmt"
 	"os"
 	"time"
 
+	//"io/ioutil"
+	"net/http"
 	"path/filepath"
 
 	"github.com/andmar/fraudion/config"
@@ -18,9 +21,7 @@ import (
 )
 
 const (
-	constDefaultConfigDir      = "."
-	constDefaultConfigFilename = "fraudion.json"
-	constDefaultLogDir         = "."
+	constDefaultLogDir = "."
 	// TODO: Should we keep the system defaulting to STDOUT or use this value as we do now?
 	constDefaultLogFile = "fraudion.log"
 )
@@ -28,8 +29,10 @@ const (
 var (
 	argCLILogTo              = flag.String("logto", constDefaultLogDir, "Directory where to save the log file.")
 	argCLILogFilename        = flag.String("logfile", constDefaultLogFile, "Log file's name.")
-	argCLIConfigIn           = flag.String("cfgin", constDefaultConfigDir, "Directory where to search the config file.")
-	argCLIConfigFilename     = flag.String("cfgfile", constDefaultConfigFilename, "Config file's name.")
+	argCLIConfigOrigin       = flag.Int("cfgorigin", config.ConstDefaultOrigin, "Config data origin.")
+	argCLIConfigIn           = flag.String("cfgin", config.ConstDefaultConfigDir, "Directory/URL where to get the config JSON data.")
+	argCLIConfigFilename     = flag.String("cfgfile", config.ConstDefaultConfigFilename, "Config file's name.")
+	argCLIConfigURL          = flag.String("cfgurl", config.ConstDefaultConfigURL, "Config URL.")
 	argCLIValidateConfigOnly = flag.Bool("cfgvalidate", false, "Validate config file only.")
 )
 
@@ -74,27 +77,52 @@ func main() {
 
 	}
 
-	// * Config Loading
-	configFileFullName := filepath.Join(*argCLIConfigIn, *argCLIConfigFilename)
+	configOriginData := ""
 
+	// * Config Validation
 	if *argCLIValidateConfigOnly {
 
-		log.LogS("INFO", "Validating configuration file...")
+		if *argCLIConfigOrigin == config.ConstOriginFile {
 
-		configFile, err := os.Open(configFileFullName)
+			log.LogS("INFO", "Config Origin will be a file.")
 
-		if err != nil {
+			configOriginData = filepath.Join(*argCLIConfigIn, *argCLIConfigFilename)
 
-			log.LogS("INFO", "Could not open config file for validation: "+err.Error())
+			configFile, err := os.Open(configOriginData)
+			if err != nil {
+				log.LogS("ERROR", "Could not open config file for validation: "+err.Error())
+			} else {
+
+				defer configFile.Close()
+
+				log.LogS("INFO", "Validating configuration JSON...")
+				if err := config.ValidateFromFile(configFile); err != nil {
+					log.LogS("INFO", "Config file FAILED validation: "+err.Error())
+				} else {
+					log.LogS("INFO", "Config file PASSED validation. :)")
+				}
+
+			}
 
 		} else {
 
-			defer configFile.Close()
+			log.LogS("INFO", "Config Origin will be a URL.")
 
-			if err := config.ValidateFromFile(configFile); err != nil {
-				log.LogS("INFO", "Config file FAILED validation: "+err.Error())
+			configOriginData = config.ConstDefaultConfigURL
+
+			if r, err := http.Get(*argCLIConfigURL); err != nil {
+				log.LogS("ERROR", "Could not fetch config json from URL for validation: "+err.Error())
 			} else {
-				log.LogS("INFO", "Config file PASSED validation. :)")
+
+				defer r.Body.Close()
+
+				log.LogS("INFO", "Validating configuration JSON...")
+				if err := config.ValidateFromURL(r.Body); err != nil {
+					log.LogS("INFO", "Config file FAILED validation: "+err.Error())
+				} else {
+					log.LogS("INFO", "Config file PASSED validation. :)")
+				}
+
 			}
 
 		}
@@ -103,11 +131,18 @@ func main() {
 
 	}
 
-	log.LogS("INFO", "Setting up Config loading from config file \""+configFileFullName+"\"...")
+	// * Config Loading
+	originLabel := "File"
+	configOriginData = *argCLIConfigFilename
+	if *argCLIConfigOrigin == config.ConstOriginURL {
+		originLabel = "URL"
+		configOriginData = *argCLIConfigURL
+	}
+	log.LogS("INFO", "Setting up Config loading from "+originLabel+" (\""+configOriginData+"\")")
 
 	// NOTE: If all goes well this puts Parsed/Verified configurations in config.Loaded
-	if err := config.Load(configFileFullName); err != nil {
-		log.LogO("ERROR", "Can't proceed. :( There was an error loading configurations from \""+configFileFullName+"\" ("+err.Error()+").", marlog.OptionFatal)
+	if err := config.Load(configOriginData, *argCLIConfigOrigin); err != nil {
+		log.LogO("ERROR", "Can't proceed. :( There was an error loading configurations ("+err.Error()+").", marlog.OptionFatal)
 	}
 
 	// * Monitored Softswitch Setup

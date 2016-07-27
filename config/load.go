@@ -1,10 +1,14 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"time"
+
+	"net/http"
 
 	"github.com/andmar/marlog"
 )
@@ -13,30 +17,69 @@ import (
 var Loaded *loadedValues
 
 // Load ...
-func Load(configFileFullName string) error {
+func Load(configFileFullName string, configOrigin int) error {
 
 	log := marlog.MarLog
 
-	log.LogS("INFO", "Opening configuration file for reading...")
-	configFile, err := os.Open(configFileFullName)
-	if err != nil {
-		return err
+	if configOrigin == ConstOriginURL {
+
+		log.LogS("INFO", "Fetching configuration from URL for reading...")
+		r, err := http.Get(ConstDefaultConfigURL)
+		if err != nil {
+			log.LogS("ERROR", "Could not fetch config json from URL for validation: "+err.Error())
+			return err
+		}
+
+		defer r.Body.Close()
+
+		rb, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			log.LogS("ERROR", "Could not read the fetched config json from URL into buffer: "+err.Error())
+			return err
+		}
+
+		reader := bytes.NewReader(rb)
+
+		log.LogS("INFO", "Validating configuration format in file...")
+		if err := ValidateFromURL(reader); err != nil {
+			return err
+		}
+
+		log.LogS("INFO", "Fetched contents passed Validation.")
+
+		log.LogS("INFO", "Parsing configuration...")
+		if err := parseFromURL(reader); err != nil {
+			return err
+		}
+
+		log.LogS("INFO", "Data Parsed.")
+
+	} else {
+
+		log.LogS("INFO", "Opening configuration file for reading...")
+		configFile, err := os.Open(configFileFullName)
+		if err != nil {
+			log.LogS("ERROR", "Could not open config file for validation: "+err.Error())
+			return err
+		}
+
+		defer configFile.Close()
+
+		log.LogS("INFO", "Validating configuration format in file...")
+		if err := ValidateFromFile(configFile); err != nil {
+			return err
+		}
+
+		log.LogS("INFO", "File contents passed Validation.")
+
+		log.LogS("INFO", "Parsing configuration...")
+		if err := parseFromFile(configFile); err != nil {
+			return err
+		}
+
+		log.LogS("INFO", "File Parsed.")
+
 	}
-	defer configFile.Close()
-
-	log.LogS("INFO", "Validating configuration format in file...")
-	if err := ValidateFromFile(configFile); err != nil {
-		return err
-	}
-
-	log.LogS("INFO", "File contents passed Validation.")
-
-	log.LogS("INFO", "Parsing configuration...")
-	if err := parseFromFile(configFile); err != nil {
-		return err
-	}
-
-	log.LogS("INFO", "File Parsed.")
 
 	log.LogS("INFO", "Loading configuration...")
 	if err := loadFromParsed(); err != nil {
