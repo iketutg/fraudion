@@ -1,7 +1,6 @@
 package config
 
 import (
-	"bytes"
 	"io"
 	"os"
 
@@ -30,9 +29,7 @@ func parseFromFile(configFile *os.File) error {
 
 }
 
-func parseFromURL(reader bytes.Reader) error {
-
-	reader.Seek(0, 0)
+func parseFromURL(reader io.Reader) error {
 
 	parsed = new(parsedValues)
 

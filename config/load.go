@@ -48,6 +48,7 @@ func Load(configFileFullName string, configOrigin int) error {
 		log.LogS("INFO", "Fetched contents passed Validation.")
 
 		log.LogS("INFO", "Parsing configuration...")
+		reader.Seek(0, 0)
 		if err := parseFromURL(reader); err != nil {
 			return err
 		}
