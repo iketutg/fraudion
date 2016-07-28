@@ -90,7 +90,7 @@ func main() {
 
 		if *argCLIConfigOrigin == config.ConstOriginFile {
 
-			log.LogS("INFO", "Config Origin will be a file.")
+			log.LogS("DEBUG", "Config Origin will be a file.")
 
 			configOriginData = filepath.Join(*argCLIConfigIn, *argCLIConfigFilename)
 
@@ -101,9 +101,9 @@ func main() {
 
 				defer configFile.Close()
 
-				log.LogS("INFO", "Validating configuration JSON...")
+				log.LogS("INFO", "Validating configuration from JSON file...")
 				if err := config.ValidateFromFile(configFile); err != nil {
-					log.LogS("INFO", "Config file FAILED validation: "+err.Error())
+					log.LogS("INFO", "Config file FAILED validation ("+err.Error()+")")
 				} else {
 					log.LogS("INFO", "Config file PASSED validation. :)")
 				}
@@ -112,21 +112,21 @@ func main() {
 
 		} else {
 
-			log.LogS("INFO", "Config Origin will be a URL.")
+			log.LogS("DEBUG", "Config Origin will be a URL.")
 
 			configOriginData = config.ConstDefaultConfigURL
 
 			if r, err := http.Get(*argCLIConfigURL); err != nil {
-				log.LogS("ERROR", "Could not fetch config json from URL for validation: "+err.Error())
+				log.LogS("ERROR", "Could not fetch config json from URL for validation ("+err.Error()+")")
 			} else {
 
 				defer r.Body.Close()
 
-				log.LogS("INFO", "Validating configuration JSON...")
+				log.LogS("INFO", "Validating configuration JSON from URL...")
 				if err := config.ValidateFromURL(r.Body); err != nil {
-					log.LogS("INFO", "Config file FAILED validation: "+err.Error())
+					log.LogS("INFO", "Config data FAILED validation: "+err.Error())
 				} else {
-					log.LogS("INFO", "Config file PASSED validation. :)")
+					log.LogS("INFO", "Config data PASSED validation. :)")
 				}
 
 			}
@@ -199,7 +199,7 @@ func main() {
 
 	if config.Loaded.Monitors.DangerousDestinations.Enabled == true {
 
-		log.LogS("INFO", "Monitor \"DangerousDestinations\" is Enabled")
+		log.LogS("DEBUG", "Monitor \"DangerousDestinations\" is Enabled")
 
 		monitor := new(monitors.DangerousDestinations)
 		monitor.Config = &config.Loaded.Monitors.DangerousDestinations
@@ -212,7 +212,7 @@ func main() {
 
 	if config.Loaded.Monitors.SimultaneousCalls.Enabled == true {
 
-		log.LogS("INFO", "Monitor \"SimultaneousCalls\" is Enabled")
+		log.LogS("DEBUG", "Monitor \"SimultaneousCalls\" is Enabled")
 
 		monitor := new(monitors.SimultaneousCalls)
 		monitor.Config = &config.Loaded.Monitors.SimultaneousCalls

@@ -143,8 +143,8 @@ func (asterisk *Asterisk) GetCurrentActiveCalls(minimumNumberLength uint32) (uin
 
 	// TODO: Make this depend on the Asterisk version because command format and result parsing may vary!
 
-	command := exec.Command("asterisk", "-rx", "core show channels concise") // NOTE: Fraudion has to have the permission to do this...
-	//command := exec.Command("cat", "asterisk.output") // NOTE: This is a just a test code to test Asterisk output without a local Asterisk via the non-commited text file: asterisk.output where one can put example output
+	//command := exec.Command("asterisk", "-rx", "core show channels concise") // NOTE: Fraudion has to have the permission to do this...
+	command := exec.Command("cat", "asterisk.output") // NOTE: This is a just a test code to test Asterisk output without a local Asterisk via the non-commited text file: asterisk.output where one can put example output
 
 	output, err := command.Output()
 	if err != nil {

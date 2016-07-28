@@ -2,6 +2,7 @@ package monitors
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -71,21 +72,35 @@ func runActionChain(monitor Monitor, skipNonRecurrentActions bool, data interfac
 
 	log := marlog.MarLog
 
+	var monitorName string
 	var actionChainName string
 
 	switch monitor.(type) {
 	case *DangerousDestinations:
-		monitor, ok := monitor.(*DangerousDestinations)
+		monitorName = "DangerousDestinations"
+		// NOTE: Because this switch does the type assertion, so in here "monitor" is of type DangerousDestinations?
+		var ok bool
+		monitor, ok = monitor.(*DangerousDestinations)
 		if !ok {
-			return fmt.Errorf("could not convert monitor value to a DangerousDestinations object")
 		}
-		actionChainName = monitor.Config.ActionChainName
-		fmt.Println("Dangerous Destinations!")
 	case *SimultaneousCalls:
-		fmt.Println("Simultaneous Calls!")
+		monitorName = "SimultaneousCalls"
+		//actionChainName = monitor.Config.ActionChainName
+		var ok bool
+		monitor, ok = monitor.(*SimultaneousCalls)
+		if !ok {
+		}
 	default:
 		return fmt.Errorf("Unknown Monitor, this is probably a bug.")
 	}
+
+	actionChainName = ""
+	//actionChainName = monitor.Config.ActionChainName
+
+	fmt.Println(monitorName)
+
+	fmt.Println(reflect.TypeOf(monitor))
+	fmt.Println(monitor)
 
 	log.LogS("DEBUG", "ActionChain to execute has name \""+actionChainName+"\"")
 
@@ -116,39 +131,50 @@ func runActionChain(monitor Monitor, skipNonRecurrentActions bool, data interfac
 
 					log.LogS("INFO", "Executing e-mail action...")
 
-					// TODO: Convert data to the e-mail action usable object if monitor is DangerousDestinations (consider other cases with a Switch)
-					dataAsserted, ok := data.(map[string]*softswitches.Hits)
-					if !ok {
-						log.LogS("ERROR", "could not convert data to e-mail action usable object")
-					} else {
+					switch monitor.(type) {
+					case *DangerousDestinations:
 
-						prefixes := ""
-						for key := range dataAsserted {
-							prefixes = prefixes + key + ", "
-						}
-						prefixes = strings.TrimSuffix(prefixes, ", ")
+						// TODO: Convert data to the e-mail action usable object if monitor is DangerousDestinations (consider other cases with a Switch)
+						dataAsserted, ok := data.(map[string]*softswitches.Hits)
+						if !ok {
+							log.LogS("ERROR", "could not convert data to e-mail action usable object")
+						} else {
 
-						// TODO: This also depends on the monitor that is calling this function
-						body := "Suspicious calls to:\n\n" + prefixes
+							prefixes := ""
+							for key := range dataAsserted {
+								prefixes = prefixes + key + ", "
+							}
+							prefixes = strings.TrimSuffix(prefixes, ", ")
 
-						email := gmail.Compose("ALERT @ "+config.Loaded.General.Hostname+": Monitor Dangerous Destinations!", "\n\n"+body)
-						email.From = config.Loaded.Actions.Email.Username
-						email.Password = config.Loaded.Actions.Email.Password
-						email.ContentType = "text/html; charset=utf-8"
-
-						for _, dataGroupName := range action.DataGroupNames {
-
-							log.LogS("DEBUG", "Adding "+dataGroups[dataGroupName].EmailAddress+" as a recipient")
-
-							email.AddRecipient(dataGroups[dataGroupName].EmailAddress)
-
+							// TODO: This also depends on the monitor that is calling this function
+							body := "Suspicious calls to:\n\n" + prefixes
+							fmt.Println(body)
 						}
 
-						err := email.Send()
-						if err != nil {
-							log.LogS("ERROR", "could not send the e-mail, an error ("+err.Error()+") ocurred")
-						}
+					case *SimultaneousCalls:
 
+					default:
+						return fmt.Errorf("Unknown Monitor, this is probably a bug.")
+					}
+
+					body := "das~ldas"
+
+					email := gmail.Compose("ALERT @ "+config.Loaded.General.Hostname+": Monitor Dangerous Destinations!", "\n\n"+body)
+					email.From = config.Loaded.Actions.Email.Username
+					email.Password = config.Loaded.Actions.Email.Password
+					email.ContentType = "text/html; charset=utf-8"
+
+					for _, dataGroupName := range action.DataGroupNames {
+
+						log.LogS("DEBUG", "Adding "+dataGroups[dataGroupName].EmailAddress+" as a recipient")
+
+						email.AddRecipient(dataGroups[dataGroupName].EmailAddress)
+
+					}
+
+					err := email.Send()
+					if err != nil {
+						log.LogS("ERROR", "could not send the e-mail, an error ("+err.Error()+") ocurred")
 					}
 
 				}

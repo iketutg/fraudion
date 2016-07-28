@@ -17,14 +17,14 @@ import (
 var Loaded *loadedValues
 
 // Load ...
-func Load(configFileFullName string, configOrigin string) error {
+func Load(configOriginData string, configOrigin string) error {
 
 	log := marlog.MarLog
 
 	if configOrigin == ConstOriginURL {
 
 		log.LogS("INFO", "Fetching configuration from URL for reading...")
-		r, err := http.Get(ConstDefaultConfigURL)
+		r, err := http.Get(configOriginData)
 		if err != nil {
 			log.LogS("ERROR", "Could not fetch config json from URL for validation: "+err.Error())
 			return err
@@ -59,7 +59,7 @@ func Load(configFileFullName string, configOrigin string) error {
 	} else {
 
 		log.LogS("INFO", "Opening configuration file for reading...")
-		configFile, err := os.Open(configFileFullName)
+		configFile, err := os.Open(configOriginData)
 		if err != nil {
 			log.LogS("ERROR", "Could not open config file for validation: "+err.Error())
 			return err
@@ -85,7 +85,7 @@ func Load(configFileFullName string, configOrigin string) error {
 
 	log.LogS("INFO", "Loading configuration...")
 	if err := loadFromParsed(); err != nil {
-		// NOTE: Remove anything that ended up in this variable inspite of the failure in the loading...
+		// NOTE: Remove anything that ended up in this variable inspite of the failure in the loading
 		Loaded = nil
 		return err
 	}
@@ -107,22 +107,6 @@ func loadFromParsed() error {
 	Loaded.Softswitch.Type = parsed.Softswitch.Type
 	Loaded.Softswitch.Version = parsed.Softswitch.Version
 	Loaded.Softswitch.CDRsSource = *parsed.Softswitch.CDRsSource
-
-	// TODO: This is to be removed!
-	// * CDRs Sources
-	// NOTE: Source configured for the Softswitch exists?
-	// exists := false
-	// for sourceName := range *parsed.CDRsSource {
-	// 	if Loaded.Softswitch.CDRsSourceName == sourceName {
-	// 		exists = true
-	// 		break
-	// 	}
-	// }
-	//
-	// if exists == false {
-	// 	return fmt.Errorf("CDR source information for softswitch is not configured")
-	// }
-	//Loaded.CDRsSource = *parsed.CDRsSource
 
 	// * Monitors
 	if parsed.Monitors.SimultaneousCalls == nil {
