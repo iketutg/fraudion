@@ -29,8 +29,8 @@ var (
 	argCLILogFilename        = flag.String("logfile", constDefaultLogFile, "Log file's name.")
 	argCLIConfigOrigin       = flag.String("cfgorigin", config.ConstDefaultOrigin, "Config data origin.")
 	argCLIConfigIn           = flag.String("cfgin", config.ConstDefaultConfigDir, "Directory/URL where to get the config JSON data.")
-	argCLIConfigFilename     = flag.String("cfgfile", config.ConstDefaultConfigFilename, "Config file's name.")
-	argCLIConfigURL          = flag.String("cfgurl", config.ConstDefaultConfigURL, "Config URL.")
+	argCLIConfigFilename     = flag.String("cfgfile", config.ConstDefaultConfigFilename, "Config file's name (if -cfgorigin is \"file\").")
+	argCLIConfigURL          = flag.String("cfgurl", config.ConstDefaultConfigURL, "Config URL (if -cfgorigin is \"url\").")
 	argCLIValidateConfigOnly = flag.Bool("cfgvalidate", false, "Validate config file only.")
 )
 
