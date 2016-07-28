@@ -41,6 +41,7 @@ func main() {
 	log.Prefix = "FRAUDION"
 	log.Flags = marlog.FlagLdate | marlog.FlagLtime | marlog.FlagLshortfile
 
+	// NOTE: What kind of "logs" will be available (that log to STDOUT)
 	log.SetStamp("ERROR", "*STDOUT")
 	log.SetStamp("DEBUG", "*STDOUT")
 	log.SetStamp("INFO", "*STDOUT")
@@ -57,23 +58,26 @@ func main() {
 
 	log.LogS("INFO", "Setting up the Log file \""+logFileFullName+"\"...")
 
-	// NOTE: Fraudion has to have permission to create the file in the folder it's being executed?
+	// NOTE: Fraudion has to have permission to create the file in the folder it's being executed
 	if logFile, err := os.OpenFile(logFileFullName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600); err != nil {
 		log.LogO("ERROR", "Can't proceed. :( There was an Error opening/creating the Log file \""+logFileFullName+"\" ("+err.Error()+").", marlog.OptionFatal)
 	} else {
 
-		log.SetOutputHandle("MAINFILE", logFile)
-
-		log.AddOuputHandles("INFO", "MAINFILE")
-
 		// NOTE: Do this to each file created to separate from previous log entries
 		logFile.WriteString("\n")
 
+		log.SetOutputHandle("MAINFILE", logFile)
+
+		// NOTE: What kind of "logs" will be available (that log to "MAINFILE")
+		log.AddOuputHandles("INFO", "MAINFILE")
 		log.LogS("INFO", "Started logging INFO messages to \""+logFileFullName+"\" at "+system.State.StartUpTime.String())
+
 		log.AddOuputHandles("DEBUG", "MAINFILE")
 		log.LogS("INFO", "Started logging DEBUG messages to \""+logFileFullName+"\" at "+system.State.StartUpTime.String())
+
 		log.AddOuputHandles("ERROR", "MAINFILE")
 		log.LogS("INFO", "Started logging ERROR messages to \""+logFileFullName+"\" at "+system.State.StartUpTime.String())
+
 		log.AddOuputHandles("VERBOSE", "MAINFILE")
 		log.LogS("INFO", "Started logging VERBOSE messages to \""+logFileFullName+"\" at "+system.State.StartUpTime.String())
 
