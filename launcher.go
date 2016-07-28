@@ -181,9 +181,6 @@ func main() {
 			log.LogO("ERROR", "Can't proceed. :( There was an Error (unknown CDR Source type \""+config.Loaded.Softswitch.CDRsSource["type"]+"\" configured)", marlog.OptionFatal)
 		}
 
-		// TODO: Config Actions Chains/Actions/DataGroups here?
-		// ...for each action type, get configs and create an action object of that type, fill configs with stuff from config.Loaded, do the same for the action chains and datagroups so that we can associate the softswitch with the action chain, etc
-
 		log.LogS("INFO", "Softswitch is set up...")
 
 		softswitches.Monitored = newSoftswitch
@@ -194,7 +191,6 @@ func main() {
 	}
 
 	// * Config/Start Monitors
-
 	log.LogS("INFO", "Configuring the monitors...")
 
 	if config.Loaded.Monitors.DangerousDestinations.Enabled == true {
@@ -223,11 +219,10 @@ func main() {
 
 	}
 
-	// "Sleep!""
 	log.LogS("INFO", "All set, main thread is going to sleep now...")
 	for {
 
-		// Main "thread" has to Sleep or else 100% CPU...
+		// NOTE: Main "thread" has to Sleep or else 100% CPU...
 		time.Sleep(100000 * time.Hour)
 
 	}
