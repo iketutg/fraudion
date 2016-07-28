@@ -48,6 +48,7 @@ func Load(configFileFullName string, configOrigin int) error {
 		log.LogS("INFO", "Fetched contents passed Validation.")
 
 		log.LogS("INFO", "Parsing configuration...")
+		// NOTE: This seek has to be done here so that we can receive io.Reader on the parse function instead of a bytes.Reader which is not acceptable by the JsonConfigReader lib
 		reader.Seek(0, 0)
 		if err := parseFromURL(reader); err != nil {
 			return err
