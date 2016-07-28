@@ -1,8 +1,8 @@
 package config
 
 const (
-	ConstOriginURL = iota
-	ConstOriginFile
+	ConstOriginURL  = "url"
+	ConstOriginFile = "file"
 )
 
 const (

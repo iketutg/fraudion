@@ -17,7 +17,7 @@ import (
 var Loaded *loadedValues
 
 // Load ...
-func Load(configFileFullName string, configOrigin int) error {
+func Load(configFileFullName string, configOrigin string) error {
 
 	log := marlog.MarLog
 

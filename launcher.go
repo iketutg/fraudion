@@ -2,11 +2,9 @@ package main
 
 import (
 	"flag"
-	//"fmt"
 	"os"
 	"time"
 
-	//"io/ioutil"
 	"net/http"
 	"path/filepath"
 
@@ -29,7 +27,7 @@ const (
 var (
 	argCLILogTo              = flag.String("logto", constDefaultLogDir, "Directory where to save the log file.")
 	argCLILogFilename        = flag.String("logfile", constDefaultLogFile, "Log file's name.")
-	argCLIConfigOrigin       = flag.Int("cfgorigin", config.ConstDefaultOrigin, "Config data origin.")
+	argCLIConfigOrigin       = flag.String("cfgorigin", config.ConstDefaultOrigin, "Config data origin.")
 	argCLIConfigIn           = flag.String("cfgin", config.ConstDefaultConfigDir, "Directory/URL where to get the config JSON data.")
 	argCLIConfigFilename     = flag.String("cfgfile", config.ConstDefaultConfigFilename, "Config file's name.")
 	argCLIConfigURL          = flag.String("cfgurl", config.ConstDefaultConfigURL, "Config URL.")
@@ -67,13 +65,17 @@ func main() {
 		log.SetOutputHandle("MAINFILE", logFile)
 
 		log.AddOuputHandles("INFO", "MAINFILE")
-		log.LogS("INFO", "Started logging INFO messages to \""+logFileFullName+"\"")
+
+		// NOTE: Do this to each file created to separate from previous log entries
+		log.LogS("INFO", "\n")
+
+		log.LogS("INFO", "Started logging INFO messages to \""+logFileFullName+"\" at "+system.State.StartUpTime.String())
 		log.AddOuputHandles("DEBUG", "MAINFILE")
-		log.LogS("INFO", "Started logging DEBUG messages to \""+logFileFullName+"\"")
+		log.LogS("INFO", "Started logging DEBUG messages to \""+logFileFullName+"\" at "+system.State.StartUpTime.String())
 		log.AddOuputHandles("ERROR", "MAINFILE")
-		log.LogS("INFO", "Started logging ERROR messages to \""+logFileFullName+"\"")
+		log.LogS("INFO", "Started logging ERROR messages to \""+logFileFullName+"\" at "+system.State.StartUpTime.String())
 		log.AddOuputHandles("VERBOSE", "MAINFILE")
-		log.LogS("INFO", "Started logging VERBOSE messages to \""+logFileFullName+"\"")
+		log.LogS("INFO", "Started logging VERBOSE messages to \""+logFileFullName+"\" at "+system.State.StartUpTime.String())
 
 	}
 
