@@ -67,7 +67,7 @@ func main() {
 		log.AddOuputHandles("INFO", "MAINFILE")
 
 		// NOTE: Do this to each file created to separate from previous log entries
-		log.LogS("INFO", "\n")
+		logFile.WriteString("\n")
 
 		log.LogS("INFO", "Started logging INFO messages to \""+logFileFullName+"\" at "+system.State.StartUpTime.String())
 		log.AddOuputHandles("DEBUG", "MAINFILE")
