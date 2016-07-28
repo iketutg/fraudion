@@ -2,6 +2,7 @@
 !samples/config/*.json
 *.log
 *.output
+*.sql
 vendor
 
 # OS generated files
