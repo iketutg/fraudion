@@ -78,7 +78,7 @@ func (monitor *DangerousDestinations) Run() {
 			for _, v := range hits {
 
 				if v.NumberOfHits > monitor.Config.HitThreshold {
-					log.LogS("INFO", "Hits above threshold \""+strconv.Itoa(int(monitor.Config.HitThreshold))+"\"on prefix "+v.Prefix+" found: "+fmt.Sprintf("%v", v.Destinations)+"!!")
+					log.LogS("DEBUG", "Hits above threshold \""+strconv.Itoa(int(monitor.Config.HitThreshold))+"\"on prefix "+v.Prefix+" found: "+fmt.Sprintf("%v", v.Destinations)+"!!")
 					monitor.State.RunMode = RunModeInAlarm
 					break
 				}
@@ -102,7 +102,7 @@ func (monitor *DangerousDestinations) Run() {
 
 				log.LogS("INFO", "Will execute action chain...")
 
-				runActionChain(monitor, skipNonRecurrentActions, make(map[string]string, 0))
+				runActionChain(monitor, skipNonRecurrentActions, hits)
 
 			}
 

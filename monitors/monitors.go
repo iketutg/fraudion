@@ -2,6 +2,7 @@ package monitors
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"os/exec"
@@ -20,6 +21,10 @@ const (
 	RunModeInWarning
 	// RunModeInAlarm ...
 	RunModeInAlarm
+	// ActionEmail ...
+	ActionEmail = "*email"
+	// ActionLocalCommands ...
+	ActionLocalCommands = "*local_commands"
 )
 
 // Monitor ...
@@ -62,7 +67,7 @@ type StateSimultaneousCalls struct {
 	stateBase
 }
 
-func runActionChain(monitor Monitor, skipNonRecurrentActions bool, data map[string]string) error {
+func runActionChain(monitor Monitor, skipNonRecurrentActions bool, data interface{}) error {
 
 	log := marlog.MarLog
 
@@ -96,10 +101,14 @@ func runActionChain(monitor Monitor, skipNonRecurrentActions bool, data map[stri
 
 	for _, action := range actionChain {
 
-		switch action.ActionName {
-		case "email":
+		fmt.Println("Action:", action)
 
-			if config.Loaded.Actions.Email.Enabled == true && skipNonRecurrentActions == true {
+		switch action.ActionName {
+		case ActionEmail:
+
+			fmt.Println("Sfurls (e-mail):", config.Loaded.Actions.Email.Enabled, config.Loaded.Actions.Email.Recurrent, skipNonRecurrentActions)
+
+			if config.Loaded.Actions.Email.Enabled == true {
 
 				if config.Loaded.Actions.Email.Recurrent == false && skipNonRecurrentActions == true {
 					log.LogS("INFO", "Action is non recurrent, skipping...")
@@ -107,11 +116,22 @@ func runActionChain(monitor Monitor, skipNonRecurrentActions bool, data map[stri
 
 					log.LogS("INFO", "Executing e-mail action...")
 
-					if data != nil && data["hits"] != "" {
+					// TODO: Convert data to the e-mail action usable object if monitor is DangerousDestinations (consider other cases with a Switch)
+					dataAsserted, ok := data.(map[string]*softswitches.Hits)
+					if !ok {
+						log.LogS("ERROR", "could not convert data to e-mail action usable object")
+					} else {
 
-						body := "Found:\n\n" + data["hits"]
+						prefixes := ""
+						for key := range dataAsserted {
+							prefixes = prefixes + key + ", "
+						}
+						prefixes = strings.TrimSuffix(prefixes, ", ")
 
-						email := gmail.Compose("Fraudion ALERT @ "+config.Loaded.General.Hostname+": Monitor Dangerous Destinations!", "\n\n"+body)
+						// TODO: This also depends on the monitor that is calling this function
+						body := "Suspicious calls to:\n\n" + prefixes
+
+						email := gmail.Compose("ALERT @ "+config.Loaded.General.Hostname+": Monitor Dangerous Destinations!", "\n\n"+body)
 						email.From = config.Loaded.Actions.Email.Username
 						email.Password = config.Loaded.Actions.Email.Password
 						email.ContentType = "text/html; charset=utf-8"
@@ -129,17 +149,15 @@ func runActionChain(monitor Monitor, skipNonRecurrentActions bool, data map[stri
 							log.LogS("ERROR", "could not send the e-mail, an error ("+err.Error()+") ocurred")
 						}
 
-					} else {
-
-						log.LogS("ERROR", "could not execute e-mail action because data was empty")
-
 					}
 
 				}
 
 			}
 
-		case "localcommands":
+		case ActionLocalCommands:
+
+			fmt.Println("Sfurls (local commands):", config.Loaded.Actions.LocalCommands.Enabled, config.Loaded.Actions.LocalCommands.Recurrent, skipNonRecurrentActions)
 
 			if config.Loaded.Actions.LocalCommands.Enabled == true {
 
