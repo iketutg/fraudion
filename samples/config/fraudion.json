@@ -1,50 +1,35 @@
 {
 
 	// CDR Based Fraud Detection, Notification & Reaction System for Asterisk/FreeSwitch in Go.
-  // Configuration File (JSON) Sample (07/06/2016)
+  // JSON Configuration File (Sample 29/07/2016)
 
 	"general": {
-
+		"hostname": ""
 	},
 
 	"softswitch": {
+
     "type": "*asterisk",
 		"version": "1.8",
-		"cdrs_source_name": "sourceName2",
+		"cdrs_source": {
+				"type": "*database",
+				"dbms": "*mysql",
+				"user_name": "user",
+				"user_password": "password",
+				"database_name": "database",
+				"table_name": "table",
+		},
+
   },
-
-	"cdrs_sources": {
-
-		"sourceName": {
-			"type": "*database",
-			"dbms": "*mysql",
-			"user_name": "root",
-			"user_password": "dadada",
-			"database_name": "asteriskcdrdb",
-			"table_name": "cdr",
-		},
-
-		"sourceName2": {
-			"type": "*database",
-			"dbms": "*mysql",
-			"user_name": "root",
-			"user_password": "dadada",
-			"database_name": "asteriskcdrdb",
-			"table_name": "cdr",
-		},
-
-		// etc...
-
-	},
 
 	"monitors": {
 
     "simultaneous_calls": {
       "enabled": true,
-      "execute_interval": "5m",
-			"hit_threshold": 10,
+      "execute_interval": "1m",
+			"hit_threshold": 3,
       "minimum_number_length": 5,
-      "action_chain_name": "*default",
+      "action_chain_name": "default",
     },
 
     "dangerous_destinations": {
@@ -52,7 +37,7 @@
       "execute_interval": "1m",
       "hit_threshold": 10,
       "minimum_number_length": 5,
-      "action_chain_name": "*default",
+      "action_chain_name": "default",
 
 			"consider_cdrs_from_last": "600",
       "prefix_list": ["351", "244", "91", "53", "256", "48"],
@@ -61,11 +46,11 @@
 		},
 
     "expected_destinations": {
-      "enabled": true,
+      "enabled": false,
       "execute_interval": "5m",
       "hit_threshold": 5,
       "minimum_number_length": 10,
-      "action_chain_name": "*default",
+      "action_chain_name": "default",
 
 			"consider_cdrs_from_last": "5",
       "prefix_list": ["244"],
@@ -74,11 +59,11 @@
     },
 
     "small_duration_calls": {
-      "enabled": true,
+      "enabled": false,
       "execute_interval": "5m",
       "hit_threshold": 5,
       "minimum_number_length": 5,
-      "action_chain_name": "*default",
+      "action_chain_name": "default",
 
 			"consider_cdrs_from_last": "5",
       "duration_threshold": "5s"
@@ -92,7 +77,7 @@
       "enabled": true,
 			"recurrent": true,
 			"type": "*gmail",
-      "username": "username@domain",
+      "username": "username",
       "password": "password",
 			"title": "An E-mail",
       "body": "This is a message, we support some __tags__ that we replace with information."
@@ -107,31 +92,23 @@
 
 	"action_chains": {
 
-      "*default": [
+      "default": [
         {
           "action_name": "*email",
-          "data_groups": ["DataGroupName", "DataGroup2Name"]
+          "data_groups": ["DataGroupName", "default"]
         },
         {
           "action_name": "*local_commands",
           "data_groups": ["DataGroupName"]
         },
-
-				// etc...
-
       ],
 
       "OneRandomName": [
         {
           "action_name": "*local_commands",
-          "data_groups": ["DataGroupName", "DataGroup2Name"]
+          "data_groups": ["DataGroupName", "default"]
         }
-
-				// etc...
-
       ],
-
-			// etc...
 
   },
 
@@ -139,9 +116,9 @@
 
 			"default": {
         "phone_number": "003519347396460",
-        "email_address": "username@domain",
+        "email_address": "email",
         "http_url": "api.somedomain.com/fraudion_in",
-        "http_method": "POST",
+        //"http_method": "POST",
         "http_parameters": {
           "http_post_parameters_1_k": "http_post_parameters_1_v",
           "http_post_parameters_2_k": "http_post_parameters_2_v"
@@ -152,19 +129,16 @@
 
       "DataGroupName": {
         "phone_number": "003519347396460",
-        "email_address": "am@voipit.pt",
+        "email_address": "email",
         "http_url": "api.somedomain.com/fraudion_in",
         "http_method": "POST",
         "http_parameters": {
           "http_post_parameters_1_k": "http_post_parameters_1_v",
           "http_post_parameters_2_k": "http_post_parameters_2_v"
-					// etc...
         },
         "command_name": "amportal",
         "command_arguments": "stop"
       },
-
-			// etc...
 
   }
 
