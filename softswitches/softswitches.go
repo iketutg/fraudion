@@ -12,6 +12,8 @@ import (
 	"database/sql"
 	"os/exec"
 
+	"github.com/andmar/fraudion/system"
+
 	"github.com/andmar/marlog"
 )
 
@@ -67,9 +69,20 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 		log.LogS("DEBUG", "Database connection is A-Ok!")
 
 		// TODO: The Query format should depend on DBMS?
-		rows, err := cdrsSource.GetConnections().Query(fmt.Sprintf("SELECT * FROM cdr WHERE calldate >= DATE_SUB(CURDATE(), INTERVAL %v HOUR) ORDER BY calldate DESC;", uint32(considerCDRsFromLast.Hours())))
+		// TODO: This query should consider CDRs only from StartUpTime onwards. This is currenctly the only though
+		// of way of resetting the system state to Normal, if we don't do this, when we restart the system will
+		// still be in alarm and will be until considerCDRsFromLast.Hours passes...
+		var rows *sql.Rows
+		var err error
+		if system.DEBUG {
+			rows, err = cdrsSource.GetConnections().Query(fmt.Sprintf("SELECT * FROM cdr WHERE calldate >= DATE_SUB(CURDATE(), INTERVAL %v HOUR) ORDER BY calldate DESC;", uint32(considerCDRsFromLast.Hours())))
+		} else {
+			sinceStartUp := time.Since(system.State.StartUpTime)
+			rows, err = cdrsSource.GetConnections().Query(fmt.Sprintf("SELECT * FROM cdr WHERE calldate >= DATE_SUB(CURDATE(), INTERVAL %v HOUR) AND calldate >= DATE_SUB(CURDATE(), INTERVAL %v HOUR) ORDER BY calldate DESC;", uint32(considerCDRsFromLast.Hours()), sinceStartUp.Hours()))
+		}
+
 		if err != nil {
-			log.LogS("ERROR", "Could not query the database")
+			log.LogS("ERROR", "could not query the database")
 			return nil, err
 		}
 
@@ -92,7 +105,7 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 
 			numberOfCDRsTotal++
 
-			//fmt.Println(calldate, clid, src, dst, dcontext, channel, dstchannel, lastapp, lastdata, duration, billsec, disposition, amaflags, accountcode, uniqueid, userfield)
+			fmt.Println(calldate, clid, src, dst, dcontext, channel, dstchannel, lastapp, lastdata, duration, billsec, disposition, amaflags, accountcode, uniqueid, userfield)
 
 			matchesDialString := regexp.MustCompile(asteriskDialString)
 			matchedString := matchesDialString.FindString(lastdata)
