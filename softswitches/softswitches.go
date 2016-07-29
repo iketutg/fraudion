@@ -105,7 +105,7 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 
 			numberOfCDRsTotal++
 
-			fmt.Println(calldate, clid, src, dst, dcontext, channel, dstchannel, lastapp, lastdata, duration, billsec, disposition, amaflags, accountcode, uniqueid, userfield)
+			//fmt.Println(calldate, clid, src, dst, dcontext, channel, dstchannel, lastapp, lastdata, duration, billsec, disposition, amaflags, accountcode, uniqueid, userfield)
 
 			matchesDialString := regexp.MustCompile(asteriskDialString)
 			matchedString := matchesDialString.FindString(lastdata)
