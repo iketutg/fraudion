@@ -2,8 +2,9 @@ package monitors
 
 import (
 	"fmt"
-	"reflect"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"os/exec"
@@ -68,39 +69,29 @@ type StateSimultaneousCalls struct {
 	stateBase
 }
 
+var runActionChainmutex = &sync.Mutex{}
+
 func runActionChain(monitor Monitor, skipNonRecurrentActions bool, data interface{}) error {
+
+	runActionChainmutex.Lock()
 
 	log := marlog.MarLog
 
-	var monitorName string
-	var actionChainName string
-
-	switch monitor.(type) {
-	case *DangerousDestinations:
-		monitorName = "DangerousDestinations"
-		// NOTE: Because this switch does the type assertion, so in here "monitor" is of type DangerousDestinations?
-		var ok bool
-		monitor, ok = monitor.(*DangerousDestinations)
-		if !ok {
-		}
-	case *SimultaneousCalls:
-		monitorName = "SimultaneousCalls"
-		//actionChainName = monitor.Config.ActionChainName
-		var ok bool
-		monitor, ok = monitor.(*SimultaneousCalls)
-		if !ok {
-		}
-	default:
-		return fmt.Errorf("Unknown Monitor, this is probably a bug.")
+	// TODO: This solution is a little bit weird, seems wrong...
+	// NOTE: Only one will work...
+	monitorDangerousDestinations, okDD := monitor.(*DangerousDestinations)
+	monitorSimultaneousCalls, okSC := monitor.(*SimultaneousCalls)
+	if !okDD && !okSC {
+		return fmt.Errorf("unable to detect monitor that tried to run the action chain")
 	}
 
-	actionChainName = ""
-	//actionChainName = monitor.Config.ActionChainName
+	var actionChainName string
 
-	fmt.Println(monitorName)
-
-	fmt.Println(reflect.TypeOf(monitor))
-	fmt.Println(monitor)
+	if okDD {
+		actionChainName = monitorDangerousDestinations.Config.ActionChainName
+	} else {
+		actionChainName = monitorSimultaneousCalls.Config.ActionChainName
+	}
 
 	log.LogS("DEBUG", "ActionChain to execute has name \""+actionChainName+"\"")
 
@@ -116,12 +107,8 @@ func runActionChain(monitor Monitor, skipNonRecurrentActions bool, data interfac
 
 	for _, action := range actionChain {
 
-		fmt.Println("Action:", action)
-
 		switch action.ActionName {
 		case ActionEmail:
-
-			fmt.Println("Sfurls (e-mail):", config.Loaded.Actions.Email.Enabled, config.Loaded.Actions.Email.Recurrent, skipNonRecurrentActions)
 
 			if config.Loaded.Actions.Email.Enabled == true {
 
@@ -131,10 +118,11 @@ func runActionChain(monitor Monitor, skipNonRecurrentActions bool, data interfac
 
 					log.LogS("INFO", "Executing e-mail action...")
 
-					switch monitor.(type) {
-					case *DangerousDestinations:
+					subject := "ALERT @ " + config.Loaded.General.Hostname + ": "
+					body := ""
 
-						// TODO: Convert data to the e-mail action usable object if monitor is DangerousDestinations (consider other cases with a Switch)
+					if okDD {
+
 						dataAsserted, ok := data.(map[string]*softswitches.Hits)
 						if !ok {
 							log.LogS("ERROR", "could not convert data to e-mail action usable object")
@@ -146,20 +134,26 @@ func runActionChain(monitor Monitor, skipNonRecurrentActions bool, data interfac
 							}
 							prefixes = strings.TrimSuffix(prefixes, ", ")
 
-							// TODO: This also depends on the monitor that is calling this function
-							body := "Suspicious calls to:\n\n" + prefixes
-							fmt.Println(body)
+							subject = subject + "Dangerous Destinations!"
+							body = "Suspicious calls to:\n\n" + prefixes
+
 						}
 
-					case *SimultaneousCalls:
+					} else {
 
-					default:
-						return fmt.Errorf("Unknown Monitor, this is probably a bug.")
+						dataAsserted, ok := data.(uint32)
+						if !ok {
+							log.LogS("ERROR", "could not convert data to e-mail action usable object")
+						} else {
+
+							subject = subject + "Simultaneous Calls"
+							body = "Currently active calls:\n\n" + strconv.Itoa(int(dataAsserted))
+
+						}
+
 					}
 
-					body := "das~ldas"
-
-					email := gmail.Compose("ALERT @ "+config.Loaded.General.Hostname+": Monitor Dangerous Destinations!", "\n\n"+body)
+					email := gmail.Compose(subject, "\n\n"+body)
 					email.From = config.Loaded.Actions.Email.Username
 					email.Password = config.Loaded.Actions.Email.Password
 					email.ContentType = "text/html; charset=utf-8"
@@ -182,8 +176,6 @@ func runActionChain(monitor Monitor, skipNonRecurrentActions bool, data interfac
 			}
 
 		case ActionLocalCommands:
-
-			fmt.Println("Sfurls (local commands):", config.Loaded.Actions.LocalCommands.Enabled, config.Loaded.Actions.LocalCommands.Recurrent, skipNonRecurrentActions)
 
 			if config.Loaded.Actions.LocalCommands.Enabled == true {
 
@@ -216,6 +208,8 @@ func runActionChain(monitor Monitor, skipNonRecurrentActions bool, data interfac
 		}
 
 	}
+
+	runActionChainmutex.Unlock()
 
 	return nil
 }
