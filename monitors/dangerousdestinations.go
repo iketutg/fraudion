@@ -53,7 +53,7 @@ func (monitor *DangerousDestinations) Run() {
 		return "", false, nil
 	}
 
-	for tickTime := range time.NewTicker(monitor.Config.ExecuteInterval).C { // NOTE: Replace "_" with "currentTime" and Log execution start time
+	for tickTime := range time.NewTicker(monitor.Config.ExecuteInterval).C {
 
 		log.LogS("INFO", "Monitor DangerousDestinations ticked at "+tickTime.String())
 

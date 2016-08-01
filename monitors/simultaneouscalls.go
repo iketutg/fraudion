@@ -16,7 +16,7 @@ func (monitor *SimultaneousCalls) Run() {
 
 	log.LogS("DEBUG", "Setting up time Ticker with interval \""+monitor.Config.ExecuteInterval.String()+"\"")
 
-	for tickTime := range time.NewTicker(monitor.Config.ExecuteInterval).C { // NOTE: Replace "_" with "currentTime" and Log execution start time
+	for tickTime := range time.NewTicker(monitor.Config.ExecuteInterval).C {
 
 		log.LogS("INFO", "Monitor SimultaneousCalls ticked at "+tickTime.String())
 
