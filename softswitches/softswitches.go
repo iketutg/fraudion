@@ -123,6 +123,7 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 				log.LogS("ERROR", "Number not suitable")
 				return nil, err
 			}
+
 			if matched == true {
 
 				numberOfCDRsMatched++

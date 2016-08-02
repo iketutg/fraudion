@@ -223,6 +223,19 @@ func main() {
 
 	}
 
+	if config.Loaded.Monitors.ExpectedDestinations.Enabled == true {
+
+		log.LogS("DEBUG", "Monitor \"ExpectedDestinations\" is Enabled")
+
+		monitor := new(monitors.ExpectedDestinations)
+		monitor.Config = &config.Loaded.Monitors.ExpectedDestinations
+		monitor.Softswitch = softswitches.Monitored
+
+		log.LogS("INFO", "Starting execution of monitor \"ExpectedDestinations\"...")
+		go monitor.Run()
+
+	}
+
 	log.LogS("INFO", "All set, main thread is going to sleep now...")
 	for {
 

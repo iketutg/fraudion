@@ -53,6 +53,13 @@ type SimultaneousCalls struct {
 	State  StateSimultaneousCalls
 }
 
+// ExpectedDestinations ...
+type ExpectedDestinations struct {
+	monitorBase
+	Config *config.MonitorExpectedDestinations
+	State  StateExpectedDestinations
+}
+
 type stateBase struct {
 	LastActionChainRunTime time.Time
 	ActionChainRunCount    uint32
@@ -69,6 +76,11 @@ type StateSimultaneousCalls struct {
 	stateBase
 }
 
+// StateExpectedDestinations ...
+type StateExpectedDestinations struct {
+	stateBase
+}
+
 var runActionChainmutex = &sync.Mutex{}
 
 func runActionChain(monitor Monitor, skipNonRecurrentActions bool, data interface{}) error {
@@ -81,7 +93,8 @@ func runActionChain(monitor Monitor, skipNonRecurrentActions bool, data interfac
 	// NOTE: Only one will work...
 	monitorDangerousDestinations, okDD := monitor.(*DangerousDestinations)
 	monitorSimultaneousCalls, okSC := monitor.(*SimultaneousCalls)
-	if !okDD && !okSC {
+	monitorExpectedDestinations, okED := monitor.(*ExpectedDestinations)
+	if !okDD && !okSC && !okED {
 		return fmt.Errorf("unable to detect monitor that tried to run the action chain")
 	}
 
@@ -89,8 +102,10 @@ func runActionChain(monitor Monitor, skipNonRecurrentActions bool, data interfac
 
 	if okDD {
 		actionChainName = monitorDangerousDestinations.Config.ActionChainName
-	} else {
+	} else if okSC {
 		actionChainName = monitorSimultaneousCalls.Config.ActionChainName
+	} else {
+		actionChainName = monitorExpectedDestinations.Config.ActionChainName
 	}
 
 	log.LogS("DEBUG", "ActionChain to execute has name \""+actionChainName+"\"")
@@ -139,7 +154,7 @@ func runActionChain(monitor Monitor, skipNonRecurrentActions bool, data interfac
 
 						}
 
-					} else {
+					} else if okSC {
 
 						dataAsserted, ok := data.(uint32)
 						if !ok {
@@ -148,6 +163,24 @@ func runActionChain(monitor Monitor, skipNonRecurrentActions bool, data interfac
 
 							subject = subject + "Simultaneous Calls"
 							body = "Currently active calls:\n\n" + strconv.Itoa(int(dataAsserted))
+
+						}
+
+					} else {
+
+						dataAsserted, ok := data.(map[string]*softswitches.Hits)
+						if !ok {
+							log.LogS("ERROR", "could not convert data to e-mail action usable object")
+						} else {
+
+							prefixes := ""
+							for key := range dataAsserted {
+								prefixes = prefixes + key + ", "
+							}
+							prefixes = strings.TrimSuffix(prefixes, ", ")
+
+							subject = subject + "Expected Destinations!"
+							body = "Suspicious calls to:\n\n" + prefixes
 
 						}
 

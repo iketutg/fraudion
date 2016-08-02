@@ -17,8 +17,6 @@ func (monitor *DangerousDestinations) Run() {
 
 	log.LogS("INFO", "Started Monitor DangerousDestinations!")
 
-	log.LogS("DEBUG", "Setting up time Ticker with interval \""+monitor.Config.ExecuteInterval.String()+"\"")
-
 	matches := func(destination string) (string, bool, error) {
 		if uint32(len(destination)) >= monitor.Config.MinimumNumberLength {
 			for _, prefix := range monitor.Config.PrefixList {
@@ -51,7 +49,10 @@ func (monitor *DangerousDestinations) Run() {
 		}
 
 		return "", false, nil
+
 	}
+
+	log.LogS("DEBUG", "Setting up time Ticker with interval \""+monitor.Config.ExecuteInterval.String()+"\"")
 
 	for tickTime := range time.NewTicker(monitor.Config.ExecuteInterval).C {
 
