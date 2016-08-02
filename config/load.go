@@ -243,6 +243,8 @@ func loadFromParsed() error {
 			return fmt.Errorf("error converting string to time.Duration on Load, this should not happen... ever")
 		}
 		Loaded.Monitors.SmallDurationCalls.DurationThreshold = durationThreshold
+		Loaded.Monitors.SmallDurationCalls.MatchRegex = parsed.Monitors.SmallDurationCalls.MatchRegex
+		Loaded.Monitors.SmallDurationCalls.IgnoreRegex = parsed.Monitors.SmallDurationCalls.IgnoreRegex
 	}
 
 	// * Actions
@@ -404,7 +406,7 @@ type monitors struct {
 	SimultaneousCalls     MonitorSimultaneousCalls
 	DangerousDestinations MonitorDangerousDestinations
 	ExpectedDestinations  MonitorExpectedDestinations
-	SmallDurationCalls    MonitorSmallCallDurations
+	SmallDurationCalls    MonitorSmallDurationCalls
 }
 
 type monitorBase struct {
@@ -438,11 +440,13 @@ type MonitorExpectedDestinations struct {
 	IgnoreRegex          string
 }
 
-// MonitorSmallCallDurations ...
-type MonitorSmallCallDurations struct {
+// MonitorSmallDurationCalls ...
+type MonitorSmallDurationCalls struct {
 	monitorBase
 	ConsiderCDRsFromLast time.Duration
 	DurationThreshold    time.Duration
+	MatchRegex           string
+	IgnoreRegex          string
 }
 
 type actions struct {

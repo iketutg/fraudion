@@ -65,7 +65,7 @@ type monitorsJSON struct {
 	SimultaneousCalls     *monitorSimultaneousCallsJSON     `json:"simultaneous_calls"`
 	DangerousDestinations *monitorDangerousDestinationsJSON `json:"dangerous_destinations"`
 	ExpectedDestinations  *monitorExpectedDestinationsJSON  `json:"expected_destinations"`
-	SmallDurationCalls    *monitorSmallCallDurationsJSON    `json:"small_duration_calls"`
+	SmallDurationCalls    *monitorSmallDurationCallsJSON    `json:"small_duration_calls"`
 }
 
 type monitorBaseJSON struct {
@@ -96,10 +96,12 @@ type monitorExpectedDestinationsJSON struct {
 	IgnoreRegex          string   `json:"ignore_regex"`
 }
 
-type monitorSmallCallDurationsJSON struct {
+type monitorSmallDurationCallsJSON struct {
 	monitorBaseJSON
 	ConsiderCDRsFromLast string `json:"consider_cdrs_from_last"`
 	DurationThreshold    string `json:"duration_threshold"`
+	MatchRegex           string `json:"match_regex"`
+	IgnoreRegex          string `json:"ignore_regex"`
 }
 
 type actionsJSON struct {

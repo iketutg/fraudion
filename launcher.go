@@ -236,6 +236,19 @@ func main() {
 
 	}
 
+	if config.Loaded.Monitors.SmallDurationCalls.Enabled == true {
+
+		log.LogS("DEBUG", "Monitor \"SmallDurationCalls\" is Enabled")
+
+		monitor := new(monitors.SmallDurationCalls)
+		monitor.Config = &config.Loaded.Monitors.SmallDurationCalls
+		monitor.Softswitch = softswitches.Monitored
+
+		log.LogS("INFO", "Starting execution of monitor \"SmallDurationCalls\"...")
+		go monitor.Run()
+
+	}
+
 	log.LogS("INFO", "All set, main thread is going to sleep now...")
 	for {
 

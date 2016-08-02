@@ -37,7 +37,7 @@ var Monitored Softswitch
 // Softswitch ...
 type Softswitch interface {
 	GetCDRsSource() CDRsSource
-	GetHits(func(string) (string, bool, error), time.Duration) (map[string]*Hits, error)
+	GetHits(func(string, ...uint32) (string, bool, error), time.Duration, bool) (map[string]*Hits, error)
 	GetCurrentActiveCalls(uint32) (uint32, error)
 }
 
@@ -48,7 +48,7 @@ type Asterisk struct {
 }
 
 // GetHits ...
-func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), considerCDRsFromLast time.Duration) (map[string]*Hits, error) {
+func (asterisk *Asterisk) GetHits(matches func(string, ...uint32) (string, bool, error), considerCDRsFromLast time.Duration, considerCallDuration bool) (map[string]*Hits, error) {
 
 	log := marlog.MarLog
 
@@ -118,7 +118,13 @@ func (asterisk *Asterisk) GetHits(matches func(string) (string, bool, error), co
 
 			dialedNumber := matchesDialString.FindStringSubmatch(lastdata)[1]
 
-			prefix, matched, err := matches(dialedNumber)
+			var prefix string
+			var matched bool
+			if !considerCallDuration {
+				prefix, matched, err = matches(dialedNumber)
+			} else {
+				prefix, matched, err = matches(dialedNumber, billsec)
+			}
 			if err != nil {
 				log.LogS("ERROR", "Number not suitable")
 				return nil, err

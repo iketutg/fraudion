@@ -90,7 +90,9 @@ var configSchema = v.Object(
 			v.ObjKV("action_chain_name", v.String()),
 
 			v.ObjKV("consider_cdrs_from_last", v.Function(validatorParseableDurationOrInt)),
-			v.ObjKV("duration_threshold", v.Function(validatorParseableDuration))),
+			v.ObjKV("duration_threshold", v.Function(validatorParseableDuration)),
+			v.ObjKV("match_regex", v.Function(validatorCompilableRegex)),
+			v.ObjKV("ignore_regex", v.Function(validatorCompilableRegex))),
 		))),
 	)),
 

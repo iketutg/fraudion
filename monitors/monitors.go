@@ -60,6 +60,13 @@ type ExpectedDestinations struct {
 	State  StateExpectedDestinations
 }
 
+// SmallDurationCalls ...
+type SmallDurationCalls struct {
+	monitorBase
+	Config *config.MonitorSmallDurationCalls
+	State  StateSmallDurationCalls
+}
+
 type stateBase struct {
 	LastActionChainRunTime time.Time
 	ActionChainRunCount    uint32
@@ -78,6 +85,11 @@ type StateSimultaneousCalls struct {
 
 // StateExpectedDestinations ...
 type StateExpectedDestinations struct {
+	stateBase
+}
+
+// StateSmallDurationCalls ...
+type StateSmallDurationCalls struct {
 	stateBase
 }
 
