@@ -17,7 +17,7 @@ func (monitor *DangerousDestinations) Run() {
 
 	log.LogS("INFO", "Started Monitor DangerousDestinations!")
 
-	matches := func(destination string) (string, bool, error) {
+	matches := func(destination string, args ...uint32) (string, bool, error) {
 		if uint32(len(destination)) >= monitor.Config.MinimumNumberLength {
 			for _, prefix := range monitor.Config.PrefixList {
 
@@ -60,7 +60,7 @@ func (monitor *DangerousDestinations) Run() {
 
 		log.LogS("DEBUG", "Querying Softswitch for Hits (matches in CDRs) from the past \""+monitor.Config.ConsiderCDRsFromLast.String()+"\"...")
 
-		hits, err := monitor.Softswitch.GetHits(matches, monitor.Config.ConsiderCDRsFromLast)
+		hits, err := monitor.Softswitch.GetHits(matches, monitor.Config.ConsiderCDRsFromLast, false)
 		if err != nil {
 			log.LogS("ERROR: ", err.Error())
 		} else {
@@ -79,7 +79,7 @@ func (monitor *DangerousDestinations) Run() {
 			for _, v := range hits {
 
 				if v.NumberOfHits > monitor.Config.HitThreshold {
-					log.LogS("DEBUG", "Hits above threshold \""+strconv.Itoa(int(monitor.Config.HitThreshold))+"\"on prefix "+v.Prefix+" found: "+fmt.Sprintf("%v", v.Destinations)+"!!")
+					log.LogS("DEBUG", "Hits above threshold (first detected) \""+strconv.Itoa(int(monitor.Config.HitThreshold))+"\" on prefix "+v.Prefix+" found: "+fmt.Sprintf("%v", v.Destinations)+"!!")
 					monitor.State.RunMode = RunModeInAlarm
 					break
 				}
