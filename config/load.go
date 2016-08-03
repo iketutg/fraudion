@@ -3,11 +3,11 @@ package config
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"time"
 
+	"io/ioutil"
 	"net/http"
 
 	"github.com/andmar/marlog"

@@ -28,7 +28,9 @@ const (
 
 const (
 	// NOTE: Currently supported dial string format for Asterisk
-	asteriskDialString = "(?:SIP|DAHDI)/[^@&]+/([0-9]+)"
+	// TODO: Maybe this should support multiple call dial string somewhow e.g. SIP/test/1234&Dahdi/g0/1234...
+	// see regexr.com for help! > something like ((?:SIP|DAHDI)\/[^@&]+\/[0-9]+)(&\1)? validates that case.
+	asteriskDialString = "(?:SIP|DAHDI)/[^@&]+/[0-9]+"
 )
 
 // Monitored ...
@@ -47,7 +49,7 @@ type Asterisk struct {
 	CDRsSource CDRsSource
 }
 
-// GetHits ...
+// GetHits Tries to match "lastdata" CDR field's value against "asteriskDialString" but only if the value of "lastapp" is "Dial"
 func (asterisk *Asterisk) GetHits(matches func(string, ...uint32) (string, bool, error), considerCDRsFromLast time.Duration, considerCallDuration bool) (map[string]*Hits, error) {
 
 	log := marlog.MarLog
@@ -116,6 +118,8 @@ func (asterisk *Asterisk) GetHits(matches func(string, ...uint32) (string, bool,
 
 			numberOfCDRsSuitable++
 
+			// TODO: Above, I mentioned that currently we do not support multi-dial dial strings (e.g. SIP/sfurls/1234&SIP/Sfurls/2345),
+			// actually we do but we just consider the first call, the changes to support that are related with the following line
 			dialedNumber := matchesDialString.FindStringSubmatch(lastdata)[1]
 
 			var prefix string
@@ -156,7 +160,7 @@ func (asterisk *Asterisk) GetHits(matches func(string, ...uint32) (string, bool,
 
 }
 
-// GetCurrentActiveCalls ...
+// GetCurrentActiveCalls Tries to match "lastdata" CDR field's value against "asteriskDialString" but only if the value of "lastapp" is "Dial"
 func (asterisk *Asterisk) GetCurrentActiveCalls(minimumNumberLength uint32) (uint32, error) {
 
 	log := marlog.MarLog
@@ -201,7 +205,7 @@ func (asterisk *Asterisk) GetCurrentActiveCalls(minimumNumberLength uint32) (uin
 			}
 
 		} else {
-			log.LogS("DEBUG", "Line has weird item count: "+strconv.Itoa(len(lineItems)))
+			log.LogS("ERROR", "Line has weird item count: "+strconv.Itoa(len(lineItems)))
 		}
 
 	}
